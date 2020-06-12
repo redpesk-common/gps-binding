@@ -3,6 +3,7 @@
 #
 # author: Fulup Ar Foll <fulup@iot.bzh>
 # contrib: Romain Forlot <romain.forlot@iot.bzh>
+# contrib: Aymeric Aillet <aymeric.aillet@iot.bzh>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +22,10 @@
 PROJECT_TARGET_ADD(rp-gps-binding)
 
 	# Define project Targets
-	add_library(rp-gps-binding MODULE rp-gps-binding.c)
+	add_library(rp-gps-binding MODULE
+			rp-gps-binding.c
+			rp-gps-binding.h
+			)
 
 	# Binder exposes a unique public entry point
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
