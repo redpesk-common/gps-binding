@@ -38,20 +38,9 @@ typedef struct event_list_node
 } event_list_node;
 
 extern void UpdateMaxFreq();
-
-//return 0 if ok, -1 if failed
 extern int EventJsonToName(json_object *jcondition, char** result);
-
 extern int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **node);
-
-//return 1 if sucessful, 0 if failed, -1 if unrecognized conditions
-//to begin from start of the list, put the list head as "from_node"
-// mode 1 = find next event complaining to this data+condition type+value
-// mode 2 = find next event complaining to this data+condition type
-// mode 3 = find next event complaining to this data (not immplemented yet)
 extern bool EventListFind(json_object *jcondition, event_list_node **from_node, event_list_node **found_node, int mode);
-
 extern bool EventListDeleteByJson(json_object *jcondition);
-
 extern bool EventListDeleteByNode(event_list_node **node);
 

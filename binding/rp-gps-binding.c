@@ -1,5 +1,29 @@
-/*
- * LICENSE file & header to complete
+/**
+ * Copyright (C) 2019-2020 IoT.bzh Company
+ * Contact: https://www.iot.bzh/licensing
+ * Author : Aymeric Aillet <aymeric.aillet@iot.bzh>
+ *
+ * This file is part of the rp-webserver module of the RedPesk project.
+ *
+ * $RP_BEGIN_LICENSE$
+ * Commercial License Usage
+ *  Licensees holding valid commercial IoT.bzh licenses may use this file in
+ *  accordance with the commercial license agreement provided with the
+ *  Software or, alternatively, in accordance with the terms contained in
+ *  a written agreement between you and The IoT.bzh Company. For licensing terms
+ *  and conditions see https://www.iot.bzh/terms-conditions. For further
+ *  information use the contact form at https://www.iot.bzh/contact.
+ *
+ * GNU General Public License Usage
+ *  Alternatively, this file may be used under the terms of the GNU General
+ *  Public license version 3. This license is as published by the Free Software
+ *  Foundation and appearing in the file LICENSE.GPLv3 included in the packaging
+ *  of this file. Please review the following information to ensure the GNU
+ *  General Public License requirements will be met
+ *  https://www.gnu.org/licenses/gpl-3.0.html.
+ * $RP_END_LICENSE$
+ *
+ * rp-server: RedPesk webui server.
  */
 
 #define _GNU_SOURCE
@@ -37,10 +61,10 @@
 #define GPSD_POLLING_DELAY_MS 2000
 
 //Threads management
-static pthread_t thread;
-static pthread_t thread_event;
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t list_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t MainThread;
+static pthread_t EventThread;
+static pthread_mutex_t GpsDataMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t EventListMutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct gpsd_connection_management_thread_userdate_s {
 	char *host;
@@ -59,7 +83,19 @@ static int max_freq;
 #define MSECS_TO_USECS(x) (x * 1000)
 #define HZ_TO_USECS(x) (1000000/x)
 
-double distance_m(double lat1, double long1, double lat2, double long2){
+/* Function:  GetDistanceInMeters
+ * --------------------
+ * Calculation of the distance between two GNSS point defined by their
+ * latitude/longitude.
+ *
+ * lat1: latitude of first point
+ * long1: longitude of first point
+ * lat2: latitude of second point
+ * long2: longitude of second point
+ *
+ * returns: the distance between the points in meters
+ */
+double GetDistanceInMeters(double lat1, double long1, double lat2, double long2){
 	lat1 = lat1 * (M_PI/180);
 	long1 = long1 * (M_PI/180);
 	lat2 = lat2 * (M_PI/180);
@@ -78,16 +114,21 @@ double distance_m(double lat1, double long1, double lat2, double long2){
 	//km to m
 	ans = ans * 1000;
 
-	AFB_INFO("distance in metters : %f", ans);
-
 	return ans;
 
 }
 
+/* Function:  UpdateMaxFreq
+ * --------------------
+ * Browse the event list to find the highest frequency event and update the
+ * global variable value.
+ *
+ * returns: Void
+ */
 void UpdateMaxFreq(){
-	pthread_mutex_lock(&list_mutex);
+	pthread_mutex_lock(&EventListMutex);
 	event_list_node *list_cpy = list;
-	pthread_mutex_unlock(&list_mutex);
+	pthread_mutex_unlock(&EventListMutex);
 
 	event_list_node *tmp_node = cds_list_entry(list_cpy->list_head.next, event_list_node, list_head);
 	int tmp_freq = 0;
@@ -110,6 +151,16 @@ void UpdateMaxFreq(){
 	}
 }
 
+/* Function:  EventJsonToName
+ * --------------------
+ * Generate the name of an event its condition and value.
+ *
+ * jcondition : Json oject containing information about the event.
+ * result : String to store the result of the generation
+ *
+ * returns: -1 if failed
+ *          0 if name well generated
+ */
 int EventJsonToName(json_object *jcondition, char** result){
 	char* event_name;
 	struct json_object *json_condition_type;
@@ -143,10 +194,21 @@ int EventJsonToName(json_object *jcondition, char** result){
 
 	if(result != NULL) *result = event_name;
 
-
 	return 0;
 }
 
+/* Function:  EventListAdd
+ * --------------------
+ * Add an event to the event list.
+ *
+ * jcondition : Json oject containing information about the event.
+ * is_disposable : true : if the event has to be protected from deletion
+ *                 false : if not
+ * node : where to store the pointer to the created event
+ *
+ * returns: -1 if failed
+ *          0 if event well created
+ */
 int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **node){
 	event_list_node *newEvent = malloc(sizeof(event_list_node));
 	CDS_INIT_LIST_HEAD(&newEvent->list_head);
@@ -231,9 +293,9 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 	}
 
 	//add NewEvent to the list
-	pthread_mutex_lock(&list_mutex);
+	pthread_mutex_lock(&EventListMutex);
 	cds_list_add_tail(&newEvent->list_head, &list->list_head);
-	pthread_mutex_unlock(&list_mutex);
+	pthread_mutex_unlock(&EventListMutex);
 
 	if(*node != NULL) *node = newEvent;
 
@@ -241,6 +303,19 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 	return 0;
 }
 
+/* Function:  EventListFind
+ * --------------------
+ * Find if a specific event is already existing in the list.
+ *
+ * jcondition : Json oject containing information about the event.
+ * from_node : Node from where the find should start in the list (not implemented yet)
+ * found_node : where to store the pointer to the found event
+ * mode : 1 : Find if there is an event with asked condition type and value
+ *        2 : Find if there is an event with asked condition type only
+ *
+ * returns: false if failed
+ *          true  if a corresponding event has been found
+ */
 bool EventListFind(json_object *jcondition, event_list_node **from_node, event_list_node **found_node, int mode){
 	event_list_node *iterator;
 	//event_list_node *cpy_start = *from_node;
@@ -250,7 +325,7 @@ bool EventListFind(json_object *jcondition, event_list_node **from_node, event_l
 		char* event_name = NULL;
 		if(EventJsonToName(jcondition, &event_name) == -1) return false;
 
-		pthread_mutex_lock(&list_mutex);
+		pthread_mutex_lock(&EventListMutex);
 		cds_list_for_each_entry(iterator, &list->list_head, list_head) {
 			if (strcmp (event_name, afb_event_name(iterator->event))) continue;
 
@@ -258,7 +333,7 @@ bool EventListFind(json_object *jcondition, event_list_node **from_node, event_l
 			found = true;
 			break;
 		}
-		pthread_mutex_unlock(&list_mutex);
+		pthread_mutex_unlock(&EventListMutex);
 		free(event_name);
 		return found;
 	}
@@ -274,7 +349,7 @@ bool EventListFind(json_object *jcondition, event_list_node **from_node, event_l
 		if(!strcmp(type, "movement")) enum_type = MOVEMENT;
 		if(!strcmp(type, "max_speed")) enum_type = MAX_SPEED;
 
-		pthread_mutex_lock(&list_mutex);
+		pthread_mutex_lock(&EventListMutex);
 		cds_list_for_each_entry(iterator, &list->list_head, list_head) {
 			if (iterator->condition_type != enum_type) continue;
 
@@ -282,7 +357,7 @@ bool EventListFind(json_object *jcondition, event_list_node **from_node, event_l
 			found = true;
 			break;
 		}
-		pthread_mutex_unlock(&list_mutex);
+		pthread_mutex_unlock(&EventListMutex);
 		return found;
 	}
 	else
@@ -292,45 +367,78 @@ bool EventListFind(json_object *jcondition, event_list_node **from_node, event_l
 	}
 }
 
+/* Function:  EventListDeleteByJson
+ * --------------------
+ * Delete an event (defined by a Json) in the list.
+ *
+ * jcondition : Json oject containing information about the event.
+ *
+ * returns: false if failed
+ *          true  if the event has been found and suppressed
+ */
 bool EventListDeleteByJson(json_object *jcondition){
 	char* event_name = NULL;
 	if(EventJsonToName(jcondition, &event_name) == -1) return false;
 
 	event_list_node *iterator, *tmp;
 	bool suppressed = false;
-	pthread_mutex_lock(&list_mutex);
+	pthread_mutex_lock(&EventListMutex);
 	cds_list_for_each_entry_safe(iterator, tmp, &list->list_head, list_head) {
 		if (strcmp (event_name, afb_event_name(iterator->event))) continue;
 
-		cds_list_del(&iterator->list_head);
-		suppressed = true;
+        if(!iterator->is_disposable) {
+            cds_list_del(&iterator->list_head);
+        }
+
+        suppressed = true;
 		break;
 	}
-	pthread_mutex_unlock(&list_mutex);
+	pthread_mutex_unlock(&EventListMutex);
 	free(event_name);
 	return suppressed;
 }
 
+/* Function:  EventListDeleteByNode
+ * --------------------
+ * Delete an event (defined by a pointer to it) in the list.
+ *
+ * node : pointer to the node to suppress
+ *
+ * returns: false if failed
+ *          true  if the event has been found and suppressed
+ */
 bool EventListDeleteByNode(event_list_node **node){
 	event_list_node *iterator, *tmp;
 	event_list_node *cpy_node = *node;
 	bool suppressed = false;
-	pthread_mutex_lock(&list_mutex);
+	pthread_mutex_lock(&EventListMutex);
 	cds_list_for_each_entry_safe(iterator, tmp, &list->list_head, list_head) {
 		if (strcmp (afb_event_name(cpy_node->event), afb_event_name(iterator->event))) continue;
 
-		cds_list_del(&iterator->list_head);
+		if(!iterator->is_disposable) {
+            cds_list_del(&iterator->list_head);
+        }
+
 		free(iterator);
 		suppressed = true;
 		break;
 	}
-	pthread_mutex_unlock(&list_mutex);
+	pthread_mutex_unlock(&EventListMutex);
 	return suppressed;
 }
 
-static json_object *json_data_completion(json_object *jdata)
+/* Function:  JsonDataCompletion
+ * --------------------
+ * Marcheling of gps data in a Json object
+ *
+ * jdata : Json object where to temporary store data
+ *
+ * returns: NULL if mode fix unavaible
+ *          Json object containing gps data
+ */
+static json_object *JsonDataCompletion(json_object *jdata)
 {
-	json_object *value = NULL;
+	json_object *JsonValue = NULL;
 
 	if (data.fix.mode < 2) {
 		json_object_put(jdata);
@@ -338,110 +446,126 @@ static json_object *json_data_completion(json_object *jdata)
 	}
 
 	if(data.set & SATELLITE_SET){
-		value = json_object_new_int(data.satellites_visible);
-		json_object_object_add(jdata, "visible satellites", value);
+		JsonValue = json_object_new_int(data.satellites_visible);
+		json_object_object_add(jdata, "visible satellites", JsonValue);
 
-		value = json_object_new_int(data.satellites_used);
-		json_object_object_add(jdata, "used satellites", value);
+		JsonValue = json_object_new_int(data.satellites_used);
+		json_object_object_add(jdata, "used satellites", JsonValue);
 	}
 
 	if(data.set & MODE_SET) {
-		value = json_object_new_int(data.fix.mode);
-		json_object_object_add(jdata, "mode", value);
+		JsonValue = json_object_new_int(data.fix.mode);
+		json_object_object_add(jdata, "mode", JsonValue);
 	}
 
 	if (data.set & LATLON_SET) {
-		value = json_object_new_double(data.fix.latitude);
-		json_object_object_add(jdata, "latitude", value);
+		JsonValue = json_object_new_double(data.fix.latitude);
+		json_object_object_add(jdata, "latitude", JsonValue);
 
-		value = json_object_new_double(data.fix.epy);
-		json_object_object_add(jdata, "latitude error", value);
+		JsonValue = json_object_new_double(data.fix.epy);
+		json_object_object_add(jdata, "latitude error", JsonValue);
 
-		value = json_object_new_double(data.fix.longitude);
-		json_object_object_add(jdata, "longitude", value);
+		JsonValue = json_object_new_double(data.fix.longitude);
+		json_object_object_add(jdata, "longitude", JsonValue);
 
-		value = json_object_new_double(data.fix.epx);
-		json_object_object_add(jdata, "longitude error", value);
+		JsonValue = json_object_new_double(data.fix.epx);
+		json_object_object_add(jdata, "longitude error", JsonValue);
 	}
 
 	if (data.set & SPEED_SET) {
-		value = json_object_new_double(data.fix.speed);
-		json_object_object_add(jdata, "speed", value);
+		JsonValue = json_object_new_double(data.fix.speed);
+		json_object_object_add(jdata, "speed", JsonValue);
 	}
 
 	if (data.set & SPEEDERR_SET){
-		value = json_object_new_double(data.fix.eps);
-		json_object_object_add(jdata, "speed error", value);
+		JsonValue = json_object_new_double(data.fix.eps);
+		json_object_object_add(jdata, "speed error", JsonValue);
 	}
 
 	if(data.fix.mode == MODE_3D){
 		if (data.set & ALTITUDE_SET) {
-			value = json_object_new_double(data.fix.altitude);
-			json_object_object_add(jdata, "altitude", value);
+			JsonValue = json_object_new_double(data.fix.altitude);
+			json_object_object_add(jdata, "altitude", JsonValue);
 		}
 
 		if(data.set & VERR_SET) {
-			value = json_object_new_double(data.fix.epv);
-			json_object_object_add(jdata, "altitude error", value);
+			JsonValue = json_object_new_double(data.fix.epv);
+			json_object_object_add(jdata, "altitude error", JsonValue);
 		}
 
 		if (data.set & CLIMB_SET){
-			value = json_object_new_double(data.fix.climb);
-			json_object_object_add(jdata, "climb", value);
+			JsonValue = json_object_new_double(data.fix.climb);
+			json_object_object_add(jdata, "climb", JsonValue);
 		}
 
 		if (data.set & CLIMBERR_SET){
-			value = json_object_new_double(data.fix.epc);
-			json_object_object_add(jdata, "climb error", value);
+			JsonValue = json_object_new_double(data.fix.epc);
+			json_object_object_add(jdata, "climb error", JsonValue);
 		}
 	}
 
 	if (data.set & TRACK_SET) {
-		value = json_object_new_double(data.fix.track);
-		json_object_object_add(jdata, "heading (true north)", value);
+		JsonValue = json_object_new_double(data.fix.track);
+		json_object_object_add(jdata, "heading (true north)", JsonValue);
 	}
 
 	if (data.set & TRACKERR_SET){
-		value = json_object_new_double(data.fix.epd);
-		json_object_object_add(jdata, "heading error", value);
+		JsonValue = json_object_new_double(data.fix.epd);
+		json_object_object_add(jdata, "heading error", JsonValue);
 	}
 
 	if(data.set & TIME_SET) {
 		//support the change from timestamp_t (double) to timespec struct (done with API 9.0)
 		#if GPSD_API_MAJOR_VERSION>8
 			double timestamp_converted = (double)data.fix.time.tv_sec + ((double)data.fix.time.tv_nsec / 1000000000);
-			value = json_object_new_double(timestamp_converted);
+			JsonValue = json_object_new_double(timestamp_converted);
 		#else
-			value = json_object_new_double(data.fix.time);
+			JsonValue = json_object_new_double(data.fix.time);
 		#endif
 
-		json_object_object_add(jdata, "timestamp", value);
+		json_object_object_add(jdata, "timestamp", JsonValue);
 	}
 
 	if(data.set & TIMERR_SET){
-		value = json_object_new_double(data.fix.ept);
-		json_object_object_add(jdata, "timestamp error", value);
+		JsonValue = json_object_new_double(data.fix.ept);
+		json_object_object_add(jdata, "timestamp error", JsonValue);
 	}
 
 	return jdata;
 }
 
-static void get_gps_data(afb_req_t request)
+/* Function:  GetGpsData
+ * --------------------
+ * Called by "gps_data" verb to send gps data to the client.
+ *
+ * request : Request from the client
+ *
+ * returns: Void
+ */
+static void GetGpsData(afb_req_t request)
 {
-	json_object *jdata = NULL;
-	pthread_mutex_lock(&mutex);
+	json_object *JsonData = NULL;
+	pthread_mutex_lock(&GpsDataMutex);
 
-	jdata = json_data_completion(json_object_new_object());
-	if (jdata != NULL) {
-		afb_req_success(request, jdata, "GNSS location data");
+	JsonData = JsonDataCompletion(json_object_new_object());
+	if (JsonData != NULL) {
+		afb_req_success(request, JsonData, "GNSS location data");
 	} else {
 		afb_req_fail(request, "failed", "No GNSS fix");
 	}
 
-	pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&GpsDataMutex);
 }
 
-static void subscribe(afb_req_t request)
+/* Function:  Subscribe
+ * --------------------
+ * Called by "subscribe" verb to subscribe to an event with specific condition.
+ *
+ * request : Request from the client
+ *
+ * returns: Void
+ */
+static void Subscribe(afb_req_t request)
 {
 	json_object *json_request = afb_req_json(request);
 	event_list_node *event_to_subscribe;
@@ -463,7 +587,7 @@ static void subscribe(afb_req_t request)
 			}
 			else {
 				//event failed to be added to the list
-				afb_req_fail(request, "failed", "Subscription error");
+				afb_req_fail(request, "failed", "Event creation failed");
 			}
 		}
 		else{
@@ -485,7 +609,15 @@ static void subscribe(afb_req_t request)
 	}
 }
 
-static void unsubscribe(afb_req_t request)
+/* Function:  Unsubscribe
+ * --------------------
+ * Called by "unsubscribe" verb to unsubscribe to an event with specific condition.
+ *
+ * request : Request from the client
+ *
+ * returns: Void
+ */
+static void Unsubscribe(afb_req_t request)
 {
 	json_object *json_request = afb_req_json(request);
 	event_list_node *event_to_unsubscribe;
@@ -513,8 +645,13 @@ static void unsubscribe(afb_req_t request)
 	}
 }
 
-//keep reading till an error condition happens
-static void* gpsd_polling(void *ptr)
+/* Function:  GpsdPolling
+ * --------------------
+ * Loop while GPSD connection is available and store gps data.
+ *
+ * returns: Void
+ */
+static void* GpsdPolling(void *ptr)
 {
 	int tries = 0;
 
@@ -523,13 +660,13 @@ static void* gpsd_polling(void *ptr)
 			tries++;
 			continue;
 		}
-		pthread_mutex_lock(&mutex);
+		pthread_mutex_lock(&GpsDataMutex);
 		if (gps_read(&data) == -1) {
 			AFB_ERROR("Cannot read from GPS daemon (errno: %d, \"%s\").\n", errno, gps_errstr(errno));
-			pthread_mutex_unlock(&mutex);
+			pthread_mutex_unlock(&GpsDataMutex);
 			break;
 		}
-		pthread_mutex_unlock(&mutex);
+		pthread_mutex_unlock(&GpsDataMutex);
 	}
 
 	AFB_INFO("GPSD connection lost, closing.\n");
@@ -540,16 +677,26 @@ static void* gpsd_polling(void *ptr)
 	return NULL;
 }
 
-static void* event_management_thread(void *arg) {
+/* Function:  EventManagementThread
+ * --------------------
+ * Thread handling the sending of events for each registered event.
+ *
+ * returns: Void
+ */
+static void* EventManagementThread(void *arg) {
 	AFB_INFO("Event management thread online !");
 
 	while(gpsd_online){
 		//start from the head of the list
-		pthread_mutex_lock(&list_mutex);
+		pthread_mutex_lock(&EventListMutex);
 		event_list_node *list_cpy = list;
-		pthread_mutex_unlock(&list_mutex);
+		pthread_mutex_unlock(&EventListMutex);
 
-		json_object *jdata = json_data_completion(json_object_new_object());
+
+        pthread_mutex_lock(&GpsDataMutex);
+		json_object *jdata = JsonDataCompletion(json_object_new_object());
+        pthread_mutex_unlock(&GpsDataMutex);
+
 		event_list_node *tmp = cds_list_entry(list_cpy->list_head.next, event_list_node, list_head);
 		event_list_node *next = tmp;
 
@@ -594,7 +741,7 @@ static void* event_management_thread(void *arg) {
 				double latitude = json_object_get_double(json_latitude);
 				double longitude = json_object_get_double(json_longitude);
 
-				if(distance_m( tmp->last_value.movement_last_lat_lon.latitude, tmp->last_value.movement_last_lat_lon.longitude, latitude, longitude) > tmp->condition_value.movement_range) {
+				if(GetDistanceInMeters( tmp->last_value.movement_last_lat_lon.latitude, tmp->last_value.movement_last_lat_lon.longitude, latitude, longitude) > tmp->condition_value.movement_range) {
 					if(afb_event_push(tmp->event, json_object_get(jdata)) == 0){
 						//protect from an instant deletion of new event
 						tmp->not_used_count++;
@@ -644,10 +791,10 @@ static void* event_management_thread(void *arg) {
 			}
 
 			tmp = next;
-
 		}
 
 		//if no frequency related event, poll the list at 1Hz
+        //double check the freq in case that events have been deleted (causing a problematic 0hz freq)
 		if(found_freq_event && (max_freq > 0)) usleep(HZ_TO_USECS(max_freq));
 		else sleep(1);
 	}
@@ -655,7 +802,15 @@ static void* event_management_thread(void *arg) {
 	pthread_exit(NULL);
 }
 
-static void* gpsd_connection_management_thread(void *arg) {
+/* Function:  GpsdConnectionManagementThread
+ * --------------------
+ * Main thread managing the reconnection to GPSD if it has been lost. Also,
+ * by extension, managing the launch of the event management thread and the
+ * Gpsd Polling functions.
+ *
+ * returns: Void
+ */
+static void* GpsdConnectionManagementThread(void *arg) {
 	gpsd_connection_management_thread_userdata_t *userdata = arg;
 
 	while(true) { // exit condition, if any, occurs in connection loop
@@ -693,20 +848,26 @@ static void* gpsd_connection_management_thread(void *arg) {
 		// connected
 		gpsd_online = TRUE;
 		userdata->nb_retries = 0; // reset counter
-		ret = pthread_create(&thread_event, NULL, &event_management_thread, NULL);
+		ret = pthread_create(&EventThread, NULL, &EventManagementThread, NULL);
 		if (ret != 0) {
 			AFB_ERROR("Could not create thread for event handling...");
 		}
 
-		pthread_detach(thread_event);
+		pthread_detach(EventThread);
 
-		gpsd_polling(NULL);
-		// gpsd_polling will return when gpsd connection's lost...
+		GpsdPolling(NULL);
+		// GpsdPolling will return when gpsd connection's lost...
 	}
 }
 
-//return 0 if pthread_create went fine, any other value for pthread_create error
-static int gps_init()
+/* Function:  GpsInit
+ * --------------------
+ * Initialize the connection to GSPD ans start the main thread.
+ *
+ * returns: 0 if went well
+ *          other if not
+ */
+static int GpsInit()
 {
 	int ret;
 
@@ -716,31 +877,38 @@ static int gps_init()
 		return -1;
 	}
 
-	userdata->host = getenv("AFBGPS_HOST") ? : "localhost";
-	userdata->port = getenv("AFBGPS_SERVICE") ? : "2947";
+	userdata->host = getenv("RPGPS_HOST") ? : "localhost";
+	userdata->port = getenv("RPGPS_SERVICE") ? : "2947";
 	userdata->max_retries = -1;
 	userdata->nb_retries = 0;
 	userdata->gps_data = &data;
 
-	ret = pthread_create(&thread, NULL, &gpsd_connection_management_thread, userdata);
+	ret = pthread_create(&MainThread, NULL, &GpsdConnectionManagementThread, userdata);
 	if (ret != 0) {
 		AFB_ERROR("Could not create thread for listening to gpsd socket...");
 		return ret;
 	}
 
-	pthread_detach(thread);
+	pthread_detach(MainThread);
 	return 0;
 }
 
-static int init(afb_api_t api)
+/* Function:  Init
+ * --------------------
+ * Initialize binding ressources and start the GPS initialization.
+ *
+ * returns: 0 if went well
+ *          -1 if not
+ */
+static int Init(afb_api_t api)
 {
 	gpsd_online = false;
 	max_freq = 0;
 	list = malloc(sizeof(event_list_node));
 	CDS_INIT_LIST_HEAD(&list->list_head);
 
-	AFB_NOTICE("Initiating GPSD mode !");
-	if(gps_init()){
+	AFB_NOTICE("Initiating GPSD connection !");
+	if(GpsInit()){
 		AFB_ERROR("Encountered a problem when initiating GPSD mode");
 		return -1;
 	}
@@ -749,10 +917,10 @@ static int init(afb_api_t api)
 }
 
 static const struct afb_verb_v3 binding_verbs[] = {
-	{ .verb = "gps_data",    .callback = get_gps_data,     .info = "Get GNSS data" },
+	{ .verb = "gps_data",    .callback = GetGpsData,     .info = "Get GNSS data" },
 	//get2Dlocation, etc ??
-	{ .verb = "subscribe",   .callback = subscribe,    .info = "Subscribe to GNSS events" },
-	{ .verb = "unsubscribe", .callback = unsubscribe,  .info = "Unsubscribe to GNSS events" },
+	{ .verb = "subscribe",   .callback = Subscribe,    .info = "Subscribe to GNSS events with conditions" },
+	{ .verb = "unsubscribe", .callback = Unsubscribe,  .info = "Unsubscribe to GNSS events with conditions" },
 	{ }
 };
 
@@ -763,5 +931,5 @@ const struct afb_binding_v3 afbBindingV3 = {
 	.api = "gps",
 	.specification = "GNSS/GPS API",
 	.verbs = binding_verbs,
-	.init = init,
+	.init = Init,
 };
