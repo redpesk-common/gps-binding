@@ -1,0 +1,33 @@
+#!/bin/bash
+
+PACKAGE_REDTEST_NAME="@PACKAGE_REDTEST@"
+BINDING_NAME="@BINDING_NAME@"
+BINDING_TEST_NAME="@BINDING_TEST_NAME@"
+AFB_TEST_BINDER="afbtest"
+
+# Get the name of the test binder
+TEST_BINDER=$(afm-util list -a | jq -r .[].id | grep ${AFB_TEST_BINDER})
+
+# Get the name of the package inside afb environment
+APP=$(afm-util list -a | jq -r .[].id | grep "${BINDING_NAME}$")
+
+# Start the corresponding app if it does not already run
+RUNNING_APP=$(afm-util ps | jq -r .[].id | grep $APP)
+if [ -z "$RUNNING_APP" ]
+then
+    afm-util start $APP
+fi
+
+# Get the binding test name
+TEST_BINDING=$(afm-util list -a | jq -r .[].id | grep ${BINDING_TEST_NAME})
+# Launch the test included in the pacakge
+afm-test ${TEST_BINDING}
+
+# Create the directory where the logs need to be
+mkdir -p /usr/lib/${PACKAGE_REDTEST_NAME}/redtest/logs
+
+# Copy the logs from source to new location
+cp -a /home/0/app-data/${BINDING_TEST_NAME}/. /usr/lib/${PACKAGE_REDTEST_NAME}/redtest/logs/
+
+# Stop the app that we were testing
+afm-util terminate $APP
