@@ -22,8 +22,8 @@
 ##################################################
 PROJECT_TARGET_ADD(fixture-files)
 
-	file(GLOB LUA_FILES "*.lua")
-	add_input_files("${LUA_FILES}")
+	file(GLOB FIXTURES_FILES "*.nmea")
+	add_input_files("${FIXTURES_FILES}")
 
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
 	LABELS "TEST-DATA"

@@ -52,7 +52,7 @@ gps gps_data
 
 - available condition & values :
     - frequency (hz)
-        * 10, 20, 50, 100
+        * 1, 10, 20, 50, 100
     - movement (m)
         * 1, 10, 100, 300, 500, 1000
     - max_speed (km/h)
@@ -107,7 +107,7 @@ Each value from "Latitude" is also accompanied by its error value expressed in t
 | RPGPS\_SERVICE    | service to connect to (tcp port) |
 
 
-## Testing
+## Testing the binding
 
 To test the binding without any physical device, you can use the gpsfake tool that is included in the the "gpsd-clients" package.
 
@@ -138,6 +138,17 @@ cgps -s
 or
 ```bash
 xgps
+```
+
+## Use the tests suite of the binding
+
+```bash
+mkdir build
+cd build
+cmake -DBUILD_TEST_WGT=TRUE ..
+make
+make widget
+afm-test package package-test -t 10
 ```
 
 

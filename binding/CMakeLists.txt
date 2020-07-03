@@ -37,3 +37,4 @@ PROJECT_TARGET_ADD(rp-gps-binding)
 
 	# Library dependencies (include updates automatically)
 	TARGET_LINK_LIBRARIES(${TARGET_NAME} ${link_libraries})
+	TARGET_LINK_OPTIONS(${TARGET_NAME} PUBLIC -fprofile-arcs)

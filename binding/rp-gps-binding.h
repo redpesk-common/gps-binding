@@ -41,6 +41,5 @@ extern void UpdateMaxFreq();
 extern int EventJsonToName(json_object *jcondition, char** result);
 extern int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **node);
 extern bool EventListFind(json_object *jcondition, event_list_node **from_node, event_list_node **found_node, int mode);
-extern bool EventListDeleteByJson(json_object *jcondition);
 extern bool EventListDeleteByNode(event_list_node **node);
 

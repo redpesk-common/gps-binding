@@ -163,6 +163,11 @@ void UpdateMaxFreq(){
  */
 int EventJsonToName(json_object *jcondition, char** result){
 	char* event_name;
+    struct json_object *json_data_type;
+	if(!json_object_object_get_ex(jcondition, "data", &json_data_type)) return -1;
+	if(!json_object_is_type(json_data_type, json_type_string)) return -1;
+	const char* data_type = json_object_get_string(json_data_type);
+
 	struct json_object *json_condition_type;
 	if(!json_object_object_get_ex(jcondition, "condition", &json_condition_type)) return -1;
 	if(!json_object_is_type(json_condition_type, json_type_string)) return -1;
@@ -171,26 +176,32 @@ int EventJsonToName(json_object *jcondition, char** result){
 	struct json_object *json_condition_value;
 	if(!json_object_object_get_ex(jcondition, "value", &json_condition_value)) return -1;
 
-	//only way to know the type of "value" is to check the type of the condition before
-	if(!strcasecmp(type, "frequency")) {
-		if(!json_object_is_type(json_condition_value, json_type_int)) return -1;
-		int value = json_object_get_int(json_condition_value);
-		if(asprintf(&event_name, "gps_data_freq_%d", value) == -1) return -1;
-	}
-	else if(!strcasecmp(type, "movement")) {
-		if(!json_object_is_type(json_condition_value, json_type_int)) return -1;
-		int value = json_object_get_int(json_condition_value);
-		if(asprintf(&event_name, "gps_data_movement_%d", value) == -1) return -1;
-	}
-	else if (!strcasecmp(type, "max_speed")){
-		if(!json_object_is_type(json_condition_value, json_type_int))	return -1;
-		int value = json_object_get_int(json_condition_value);
-		if(asprintf(&event_name, "gps_data_speed_%d", value) == -1) return -1;
-	}
-	else {
-		AFB_ERROR("Unsuported event type.");
-		return -1;
-	}
+    if(!strcasecmp(data_type, "gps_data")){
+        //only way to know the type of "value" is to check the type of the condition before
+        if(!strcasecmp(type, "frequency")) {
+            if(!json_object_is_type(json_condition_value, json_type_int)) return -1;
+            int value = json_object_get_int(json_condition_value);
+            if(asprintf(&event_name, "gps_data_freq_%d", value) == -1) return -1;
+        }
+        else if(!strcasecmp(type, "movement")) {
+            if(!json_object_is_type(json_condition_value, json_type_int)) return -1;
+            int value = json_object_get_int(json_condition_value);
+            if(asprintf(&event_name, "gps_data_movement_%d", value) == -1) return -1;
+        }
+        else if (!strcasecmp(type, "max_speed")){
+            if(!json_object_is_type(json_condition_value, json_type_int))	return -1;
+            int value = json_object_get_int(json_condition_value);
+            if(asprintf(&event_name, "gps_data_speed_%d", value) == -1) return -1;
+        }
+        else {
+            AFB_ERROR("Unsuported event type.");
+            return -1;
+        }
+    }
+    else{
+        AFB_ERROR("Unsuported data type.");
+        return -1;
+    }
 
 	if(result != NULL) *result = event_name;
 
@@ -367,37 +378,6 @@ bool EventListFind(json_object *jcondition, event_list_node **from_node, event_l
 	}
 }
 
-/* Function:  EventListDeleteByJson
- * --------------------
- * Delete an event (defined by a Json) in the list.
- *
- * jcondition : Json oject containing information about the event.
- *
- * returns: false if failed
- *          true  if the event has been found and suppressed
- */
-bool EventListDeleteByJson(json_object *jcondition){
-	char* event_name = NULL;
-	if(EventJsonToName(jcondition, &event_name) == -1) return false;
-
-	event_list_node *iterator, *tmp;
-	bool suppressed = false;
-	pthread_mutex_lock(&EventListMutex);
-	cds_list_for_each_entry_safe(iterator, tmp, &list->list_head, list_head) {
-		if (strcmp (event_name, afb_event_name(iterator->event))) continue;
-
-        if(!iterator->is_disposable) {
-            cds_list_del(&iterator->list_head);
-        }
-
-        suppressed = true;
-		break;
-	}
-	pthread_mutex_unlock(&EventListMutex);
-	free(event_name);
-	return suppressed;
-}
-
 /* Function:  EventListDeleteByNode
  * --------------------
  * Delete an event (defined by a pointer to it) in the list.
@@ -548,7 +528,7 @@ static void GetGpsData(afb_req_t request)
 	pthread_mutex_lock(&GpsDataMutex);
 
 	JsonData = JsonDataCompletion(json_object_new_object());
-	if (JsonData != NULL) {
+	if (JsonData) {
 		afb_req_success(request, JsonData, "GNSS location data");
 	} else {
 		afb_req_fail(request, "failed", "No GNSS fix");
@@ -572,8 +552,10 @@ static void Subscribe(afb_req_t request)
 
 	if(!EventJsonToName(json_request, NULL)){
 		if(!EventListFind(json_request, &list, &event_to_subscribe, 1)){
+            AFB_INFO("event not found");
 			//event does not exist
 			if(!EventListAdd(json_request, false, &event_to_subscribe)){
+                AFB_INFO("event added");
 				//event has been added to the list
 				UpdateMaxFreq();
 				if(afb_req_subscribe(request, event_to_subscribe->event) == 0){
@@ -696,6 +678,10 @@ static void* EventManagementThread(void *arg) {
         pthread_mutex_lock(&GpsDataMutex);
 		json_object *jdata = JsonDataCompletion(json_object_new_object());
         pthread_mutex_unlock(&GpsDataMutex);
+
+        if(!jdata){
+            continue;
+        }
 
 		event_list_node *tmp = cds_list_entry(list_cpy->list_head.next, event_list_node, list_head);
 		event_list_node *next = tmp;
