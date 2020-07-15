@@ -310,7 +310,7 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 
 	if(*node != NULL) *node = newEvent;
 
-	AFB_INFO("Event well created.");
+	AFB_INFO("Event %s well created.", afb_event_name(newEvent->event));
 	return 0;
 }
 
@@ -319,63 +319,30 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
  * Find if a specific event is already existing in the list.
  *
  * jcondition : Json oject containing information about the event.
- * from_node : Node from where the find should start in the list (not implemented yet)
  * found_node : where to store the pointer to the found event
- * mode : 1 : Find if there is an event with asked condition type and value
- *        2 : Find if there is an event with asked condition type only
  *
  * returns: false if failed
  *          true  if a corresponding event has been found
  */
-bool EventListFind(json_object *jcondition, event_list_node **from_node, event_list_node **found_node, int mode){
+bool EventListFind(json_object *jcondition, event_list_node **found_node){
 	event_list_node *iterator;
-	//event_list_node *cpy_start = *from_node;
 	bool found = false;
-	if (mode == 1){
-		//find next event by type+value (using its event name)
-		char* event_name = NULL;
-		if(EventJsonToName(jcondition, &event_name) == -1) return false;
 
-		pthread_mutex_lock(&EventListMutex);
-		cds_list_for_each_entry(iterator, &list->list_head, list_head) {
-			if (strcmp (event_name, afb_event_name(iterator->event))) continue;
+    //find next event by type+value (using its event name)
+	char* event_name = NULL;
+	if(EventJsonToName(jcondition, &event_name) == -1) return false;
 
-			if(*found_node != NULL) *found_node = iterator;
-			found = true;
-			break;
-		}
-		pthread_mutex_unlock(&EventListMutex);
-		free(event_name);
-		return found;
+	pthread_mutex_lock(&EventListMutex);
+	cds_list_for_each_entry(iterator, &list->list_head, list_head) {
+		if (strcmp (event_name, afb_event_name(iterator->event))) continue;
+
+		if(*found_node != NULL) *found_node = iterator;
+		found = true;
+		break;
 	}
-	else if(mode == 2){
-		//find next event by type
-		struct json_object *json_condition_type;
-		if(!json_object_object_get_ex(jcondition, "condition", &json_condition_type)) return -1;
-		if(!json_object_is_type(json_condition_type, json_type_string)) return -1;
-		const char* type = json_object_get_string(json_condition_type);
-		enum condition_type_enum enum_type;
-
-		if(!strcmp(type, "frequency")) enum_type = FREQUENCY;
-		if(!strcmp(type, "movement")) enum_type = MOVEMENT;
-		if(!strcmp(type, "max_speed")) enum_type = MAX_SPEED;
-
-		pthread_mutex_lock(&EventListMutex);
-		cds_list_for_each_entry(iterator, &list->list_head, list_head) {
-			if (iterator->condition_type != enum_type) continue;
-
-			if(*found_node != NULL) *found_node = iterator;
-			found = true;
-			break;
-		}
-		pthread_mutex_unlock(&EventListMutex);
-		return found;
-	}
-	else
-	{
-		AFB_ERROR("[EventFind] Unrecognized mode.");
-		return false;
-	}
+	pthread_mutex_unlock(&EventListMutex);
+	free(event_name);
+	return found;
 }
 
 /* Function:  EventListDeleteByNode
@@ -425,91 +392,65 @@ static json_object *JsonDataCompletion(json_object *jdata)
 		return NULL;
 	}
 
-	if(data.set & SATELLITE_SET){
-		JsonValue = json_object_new_int(data.satellites_visible);
-		json_object_object_add(jdata, "visible satellites", JsonValue);
+	JsonValue = json_object_new_int(data.satellites_visible);
+	json_object_object_add(jdata, "visible satellites", JsonValue);
 
-		JsonValue = json_object_new_int(data.satellites_used);
-		json_object_object_add(jdata, "used satellites", JsonValue);
-	}
+	JsonValue = json_object_new_int(data.satellites_used);
+	json_object_object_add(jdata, "used satellites", JsonValue);
 
-	if(data.set & MODE_SET) {
-		JsonValue = json_object_new_int(data.fix.mode);
-		json_object_object_add(jdata, "mode", JsonValue);
-	}
+	JsonValue = json_object_new_int(data.fix.mode);
+	json_object_object_add(jdata, "mode", JsonValue);
 
-	if (data.set & LATLON_SET) {
-		JsonValue = json_object_new_double(data.fix.latitude);
-		json_object_object_add(jdata, "latitude", JsonValue);
+	JsonValue = json_object_new_double(data.fix.latitude);
+	json_object_object_add(jdata, "latitude", JsonValue);
 
-		JsonValue = json_object_new_double(data.fix.epy);
-		json_object_object_add(jdata, "latitude error", JsonValue);
+	JsonValue = json_object_new_double(data.fix.epy);
+	json_object_object_add(jdata, "latitude error", JsonValue);
 
-		JsonValue = json_object_new_double(data.fix.longitude);
-		json_object_object_add(jdata, "longitude", JsonValue);
+	JsonValue = json_object_new_double(data.fix.longitude);
+	json_object_object_add(jdata, "longitude", JsonValue);
 
-		JsonValue = json_object_new_double(data.fix.epx);
-		json_object_object_add(jdata, "longitude error", JsonValue);
-	}
+	JsonValue = json_object_new_double(data.fix.epx);
+	json_object_object_add(jdata, "longitude error", JsonValue);
 
-	if (data.set & SPEED_SET) {
-		JsonValue = json_object_new_double(data.fix.speed);
-		json_object_object_add(jdata, "speed", JsonValue);
-	}
+	JsonValue = json_object_new_double(data.fix.speed);
+	json_object_object_add(jdata, "speed", JsonValue);
 
-	if (data.set & SPEEDERR_SET){
-		JsonValue = json_object_new_double(data.fix.eps);
-		json_object_object_add(jdata, "speed error", JsonValue);
-	}
+	JsonValue = json_object_new_double(data.fix.eps);
+	json_object_object_add(jdata, "speed error", JsonValue);
 
 	if(data.fix.mode == MODE_3D){
-		if (data.set & ALTITUDE_SET) {
-			JsonValue = json_object_new_double(data.fix.altitude);
-			json_object_object_add(jdata, "altitude", JsonValue);
-		}
+		JsonValue = json_object_new_double(data.fix.altitude);
+		json_object_object_add(jdata, "altitude", JsonValue);
 
-		if(data.set & VERR_SET) {
-			JsonValue = json_object_new_double(data.fix.epv);
-			json_object_object_add(jdata, "altitude error", JsonValue);
-		}
+		JsonValue = json_object_new_double(data.fix.epv);
+		json_object_object_add(jdata, "altitude error", JsonValue);
 
-		if (data.set & CLIMB_SET){
-			JsonValue = json_object_new_double(data.fix.climb);
-			json_object_object_add(jdata, "climb", JsonValue);
-		}
+		JsonValue = json_object_new_double(data.fix.climb);
+		json_object_object_add(jdata, "climb", JsonValue);
 
-		if (data.set & CLIMBERR_SET){
-			JsonValue = json_object_new_double(data.fix.epc);
-			json_object_object_add(jdata, "climb error", JsonValue);
-		}
+		JsonValue = json_object_new_double(data.fix.epc);
+		json_object_object_add(jdata, "climb error", JsonValue);
 	}
 
-	if (data.set & TRACK_SET) {
-		JsonValue = json_object_new_double(data.fix.track);
-		json_object_object_add(jdata, "heading (true north)", JsonValue);
-	}
+	JsonValue = json_object_new_double(data.fix.track);
+	json_object_object_add(jdata, "heading (true north)", JsonValue);
 
-	if (data.set & TRACKERR_SET){
-		JsonValue = json_object_new_double(data.fix.epd);
-		json_object_object_add(jdata, "heading error", JsonValue);
-	}
+	JsonValue = json_object_new_double(data.fix.epd);
+	json_object_object_add(jdata, "heading error", JsonValue);
 
-	if(data.set & TIME_SET) {
-		//support the change from timestamp_t (double) to timespec struct (done with API 9.0)
-		#if GPSD_API_MAJOR_VERSION>8
-			double timestamp_converted = (double)data.fix.time.tv_sec + ((double)data.fix.time.tv_nsec / 1000000000);
-			JsonValue = json_object_new_double(timestamp_converted);
-		#else
-			JsonValue = json_object_new_double(data.fix.time);
-		#endif
+	//support the change from timestamp_t (double) to timespec struct (done with API 9.0)
+	#if GPSD_API_MAJOR_VERSION>8
+		double timestamp_converted = (double)data.fix.time.tv_sec + ((double)data.fix.time.tv_nsec / 1000000000);
+		JsonValue = json_object_new_double(timestamp_converted);
+	#else
+		JsonValue = json_object_new_double(data.fix.time);
+	#endif
 
-		json_object_object_add(jdata, "timestamp", JsonValue);
-	}
+	json_object_object_add(jdata, "timestamp", JsonValue);
 
-	if(data.set & TIMERR_SET){
-		JsonValue = json_object_new_double(data.fix.ept);
-		json_object_object_add(jdata, "timestamp error", JsonValue);
-	}
+	JsonValue = json_object_new_double(data.fix.ept);
+	json_object_object_add(jdata, "timestamp error", JsonValue);
 
 	return jdata;
 }
@@ -551,38 +492,22 @@ static void Subscribe(afb_req_t request)
 	event_list_node *event_to_subscribe;
 
 	if(!EventJsonToName(json_request, NULL)){
-		if(!EventListFind(json_request, &list, &event_to_subscribe, 1)){
-            AFB_INFO("event not found");
+		if(!EventListFind(json_request, &event_to_subscribe)){
+            AFB_INFO("Event not found.");
 			//event does not exist
 			if(!EventListAdd(json_request, false, &event_to_subscribe)){
-                AFB_INFO("event added");
+                AFB_INFO("Event %s added.", afb_event_name(event_to_subscribe->event));
 				//event has been added to the list
 				UpdateMaxFreq();
-				if(afb_req_subscribe(request, event_to_subscribe->event) == 0){
-					//well subscribed to the new event
+			}
+			else afb_req_fail(request, "failed", "Event creation failed");
+		}
+        if(afb_req_subscribe(request, event_to_subscribe->event) == 0){
+					//well subscribed to the event
+                    AFB_INFO("Subscribed to event %s.", afb_event_name(event_to_subscribe->event));
 					afb_req_success(request, NULL, NULL);
-				}
-				else {
-					//subscribe failed
-					afb_req_fail(request, "failed", "Subscription error");
-				}
-			}
-			else {
-				//event failed to be added to the list
-				afb_req_fail(request, "failed", "Event creation failed");
-			}
 		}
-		else{
-			//event exist
-			if(afb_req_subscribe(request, event_to_subscribe->event) == 0){
-				//well subscribed to the new event
-				afb_req_success(request, NULL, NULL);
-			}
-			else{
-				//subscribe failed
-				afb_req_fail(request, "failed", "Subscription error");
-			}
-		}
+		else afb_req_fail(request, "failed", "Subscription error");
 		return;
 	}
 	else{
@@ -605,7 +530,7 @@ static void Unsubscribe(afb_req_t request)
 	event_list_node *event_to_unsubscribe;
 
 	if(!EventJsonToName(json_request, NULL)){
-		if(EventListFind(json_request, &list, &event_to_unsubscribe, 1)){
+		if(EventListFind(json_request, &event_to_unsubscribe)){
 			//event exist
 			if(afb_req_unsubscribe(request, event_to_unsubscribe->event) == 0){
 				//well unsubscribe, we dont delete the event in case anyone else needs it
