@@ -21,34 +21,12 @@
 local testPrefix ="rp_gps_FakeEventTests_"
 local api="gps"
 
-_AFT.setBeforeEach(function()
-    print("~~~~~ Begin Test ~~~~~")
+_AFT.setBeforeEach(function() print("~~~~~ Begin Test ~~~~~") end)
+_AFT.setAfterEach(function() print("~~~~~ End Test ~~~~~") end)
 
-end)
+_AFT.setBeforeAll(function() print("~~~~~~~~~~ BEGIN FAKE EVENTS TESTS ~~~~~~~~~~") return 0 end)
+_AFT.setAfterAll(function() print("~~~~~~~~~~ END FAKE EVENTS TESTS ~~~~~~~~~~") return 0 end)
 
-_AFT.setAfterEach(function()
-    print("~~~~~ End Test ~~~~~")
-
-end)
-
-_AFT.setBeforeAll(function()
-    print("~~~~~~~~~~ BEGIN FAKE EVENTS TESTS ~~~~~~~~~~")
-    os.execute("pkill -f -9 gpsfake")
-    os.execute("pkill -9 gpsd")
-    os.execute("gpsfake -r -q -S ".._AFT.bindingRootDir.."/var/test.nmea &")
-    os.execute("sleep 2")
-    return 0
-end)
-
-_AFT.setAfterAll(function()
-    print("~~~~~~~~~~ END FAKE EVENTS TESTS ~~~~~~~~~~")
-    os.execute("pkill -f -9 gpsfake")
-    os.execute("pkill -9 gpsd")
-    return 0
-end)
-
--- This tests the 'gps_data' verb of the gps API
-_AFT.testVerbStatusSuccess(testPrefix.."gps_data",api,"gps_data", {}, nil, nil)
 
 -- This tests 'frequency_event'
 _AFT.describe(testPrefix.."frequency_event",
@@ -64,8 +42,8 @@ end)
 _AFT.describe(testPrefix.."movement_event",
 function()
     _AFT.addEventToMonitor("gps/gps_data_movement_1")
-    os.execute("sleep 1")
     _AFT.assertVerbStatusSuccess(api, "subscribe", {data = "gps_data", condition = "movement", value = 1})
+    os.execute("sleep 1")
     _AFT.assertEvtReceived("gps/gps_data_movement_1", 200000)
     _AFT.assertVerbStatusSuccess(api, "unsubscribe", {data = "gps_data", condition = "movement", value = 1})
 end)
@@ -74,16 +52,13 @@ end)
 _AFT.describe(testPrefix.."max_speed_event",
 function()
     _AFT.addEventToMonitor("gps/gps_data_speed_20")
-    os.execute("sleep 1")
     _AFT.assertVerbStatusSuccess(api, "subscribe", {data = "gps_data", condition = "max_speed", value = 20})
+    os.execute("sleep 1")
     _AFT.assertEvtReceived("gps/gps_data_speed_20", 4000000)
     _AFT.assertVerbStatusSuccess(api, "unsubscribe", {data = "gps_data", condition = "max_speed", value = 20})
 end)
 
--- This tests 'let the event being destroyed'
-_AFT.describe(testPrefix.."auto_destroy_event",
-function()
-    _AFT.assertVerbStatusSuccess(api, "subscribe", {data = "gps_data", condition = "frequency", value = 100})
-end)
+-- This tests the 'gps_data' verb of the gps API
+_AFT.testVerbStatusSuccess(testPrefix.."gps_data",api,"gps_data", {}, nil, nil)
 
 _AFT.exitAtEnd()

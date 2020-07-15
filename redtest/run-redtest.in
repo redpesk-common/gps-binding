@@ -5,6 +5,23 @@ BINDING_NAME="@BINDING_NAME@"
 BINDING_TEST_NAME="@BINDING_TEST_NAME@"
 AFB_TEST_BINDER="afbtest"
 
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root"
+  exit
+fi
+
+#Setup
+DIR="/var/local/lib/afm/applications/rp-service-gps-test/var"
+
+echo "--- Stopping remaining gpsd & gpsfake instances ---"
+systemctl stop gpsd.service
+systemctl stop gpsd.socket
+pkill -9 gpsfake
+pkill -9 gpsd
+
+echo "--- Launching gpsfake instance ---"
+gpsfake -q -S $DIR/test.nmea &
+
 # Get the name of the test binder
 TEST_BINDER=$(afm-util list -a | jq -r .[].id | grep ${AFB_TEST_BINDER})
 
@@ -31,3 +48,11 @@ cp -a /home/0/app-data/${BINDING_TEST_NAME}/. /usr/lib/${PACKAGE_REDTEST_NAME}/r
 
 # Stop the app that we were testing
 afm-util terminate $APP
+
+#Teardown
+echo "--- Killing created gpsd & gpsfake instances ---"
+systemctl stop gpsd.service
+systemctl stop gpsd.socket
+pkill -9 gpsfake
+pkill -9 gpsd
+

@@ -106,4 +106,7 @@ _AFT.testVerbStatusError(testPrefix.."unsubscribe_wrong_value_argument",api,"uns
 -- This tests 'unsubscribe without argument'
 _AFT.testVerbStatusError(testPrefix.."unsubscribe_without_argument",api,"unsubscribe",{}, nil, nil)
 
+-- This tests 'let the event being destroyed' used for coverage
+_AFT.testVerbStatusSuccess(testPrefix.."let_event_being_detroyed", api, "subscribe", {data = "gps_data", condition = "frequency", value = 100}, nil, nil)
+
 _AFT.exitAtEnd()

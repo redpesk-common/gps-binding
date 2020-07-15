@@ -7,12 +7,12 @@ In order to build and run the binding, you will need several packages, gpsd itse
 
 ### Ubuntu/Debian
 ```bash
-sudo apt install gpsd libgps-dev gpsd-clients
+sudo apt install gpsd libgps-dev gpsd-clients liburcu-dev
 ```
 
 ### Fedora
 ```bash
-sudo dnf install gpsd gpsd-clients gpsd-devel gpsd-libs
+sudo dnf install gpsd gpsd-clients gpsd-devel gpsd-libs userspace-rcu-devel
 ```
 
 ## Build & run the binding
@@ -148,7 +148,9 @@ cd build
 cmake -DBUILD_TEST_WGT=TRUE ..
 make
 make widget
-afm-test package package-test -t 10
+./package-test/var/run-test.sh
 ```
+
+If you want to launch tests manually using the afm-test suite, you should run a working gpsd instance before running them.
 
 

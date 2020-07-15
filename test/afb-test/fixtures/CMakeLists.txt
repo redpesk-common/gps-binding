@@ -22,7 +22,7 @@
 ##################################################
 PROJECT_TARGET_ADD(fixture-files)
 
-	file(GLOB FIXTURES_FILES "*.nmea")
+	file(GLOB FIXTURES_FILES "*.nmea" && "*.sh")
 	add_input_files("${FIXTURES_FILES}")
 
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES

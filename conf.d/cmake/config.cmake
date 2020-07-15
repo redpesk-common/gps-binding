@@ -23,6 +23,8 @@ set(PROJECT_PRETTY_NAME "RP binding for GPS")
 set(PROJECT_DESCRIPTION "Binding for handling NMEA signalisation of GPS")
 set(PROJECT_VERSION "1.0")
 set(PROJECT_ICON "icon.png")
+set(PROJECT_AUTHOR "Aymeric Aillet")
+set(PROJECT_AUTHOR_MAIL "aymeric.aillet@iot.bzh")
 set(PROJECT_LICENSE "APL2.0")
 set(PROJECT_LANGUAGES,"C")
 set(API_NAME "gps")
@@ -69,6 +71,7 @@ set (PKG_REQUIRED_LIST
 	json-c
 	libgps
 	libsystemd>=222
+	liburcu
 	afb-daemon
 )
 
