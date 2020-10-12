@@ -10,14 +10,18 @@ if [ "$EUID" -ne 0 ]
   exit
 fi
 
+function stop_gpsd {
+        sudo systemctl stop gpsd.service >/dev/null
+        sudo systemctl stop gpsd.socket >/dev/null
+        sudo pkill -9 gpsfake >/dev/null
+        sudo pkill -9 gpsd >/dev/null
+}
+
 #Setup
 DIR="/var/local/lib/afm/applications/rp-service-gps-test/var"
 
 echo "--- Stopping remaining gpsd & gpsfake instances ---"
-systemctl stop gpsd.service
-systemctl stop gpsd.socket
-pkill -9 gpsfake
-pkill -9 gpsd
+stop_gpsd
 
 echo "--- Launching gpsfake instance ---"
 gpsfake -q -S $DIR/test.nmea &
@@ -51,8 +55,5 @@ afm-util terminate $APP
 
 #Teardown
 echo "--- Killing created gpsd & gpsfake instances ---"
-systemctl stop gpsd.service
-systemctl stop gpsd.socket
-pkill -9 gpsfake
-pkill -9 gpsd
+stop_gpsd
 
