@@ -17,9 +17,9 @@
 ###########################################################################
 
 ##################################################
-# rp-service-gps test configuration files
+# gps-binding test configuration files
 ##################################################
-PROJECT_TARGET_ADD(rp-service-gps-config)
+PROJECT_TARGET_ADD(gps-binding-config)
 
 	file(GLOB CONF_FILES "*.json")
 

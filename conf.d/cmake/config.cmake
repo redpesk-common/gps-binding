@@ -18,7 +18,7 @@
 
 # Project Info
 # ------------------
-set(PROJECT_NAME rp-service-gps)
+set(PROJECT_NAME gps-binding)
 set(PROJECT_PRETTY_NAME "RP binding for GPS")
 set(PROJECT_DESCRIPTION "Binding for handling NMEA signalisation of GPS")
 set(PROJECT_VERSION "1.0")
@@ -72,7 +72,7 @@ set (PKG_REQUIRED_LIST
 	libgps
 	libsystemd>=222
 	liburcu
-	afb-daemon
+	afb-binding
 )
 
 # Customize link option
@@ -111,7 +111,7 @@ set(WIDGET_TYPE application/vnd.agl.service)
 # This is the file that will be executed, loaded,
 # at launch time by the application framework.
 #
-set(WIDGET_ENTRY_POINT lib/librp-gps-binding.so)
+set(WIDGET_ENTRY_POINT lib/libgps-binding.so)
 
 # Print a helper message when every thing is finished
 # ----------------------------------------------------

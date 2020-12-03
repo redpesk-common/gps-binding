@@ -18,7 +18,7 @@ function stop_gpsd {
 }
 
 #Setup
-DIR="/var/local/lib/afm/applications/rp-service-gps-test/var"
+DIR="/var/local/lib/afm/applications/gps-binding-test/var"
 
 echo "--- Stopping remaining gpsd & gpsfake instances ---"
 stop_gpsd

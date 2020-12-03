@@ -18,7 +18,7 @@
 
 
 ##################################################
-# rp-service-gps Lua Scripts
+# gps-binding Lua Scripts
 ##################################################
 PROJECT_TARGET_ADD(test-files)
 

@@ -19,10 +19,10 @@
 ###########################################################################
 
 # Add target to project dependency list
-PROJECT_TARGET_ADD(rp-gps-binding)
+PROJECT_TARGET_ADD(gps-binding)
 
 	# Define project Targets
-	add_library(rp-gps-binding MODULE
+	add_library(gps-binding MODULE
 			rp-gps-binding.c
 			rp-gps-binding.h
 			)

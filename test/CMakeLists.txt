@@ -21,7 +21,7 @@
 # -----------------------------------------------------
 PROJECT_SUBDIRS_ADD(${PROJECT_SRC_DIR_PATTERN})
 
-ADD_TEST(NAME rp-service-gps_tests
+ADD_TEST(NAME gps-binding_tests
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND afm-test "${CMAKE_BINARY_DIR}/package" "${CMAKE_BINARY_DIR}/package-test" SERVICE
 )

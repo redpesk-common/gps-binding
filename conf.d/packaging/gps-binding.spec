@@ -13,23 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###########################################################################
-Name:    rp-service-gps
+Name:    gps-binding
 #Hexsha: 3997d85c023e7ad9068f615c1c3e302a45acc541
 #Hexsha: 3997d85c023e7ad9068f615c1c3e302a45acc541
 Version: 0.0.0+20200701+0+g3997d85c
 Release: 9%{?dist}
 License: GPLv3
 Summary: gps api for redpesk
-URL:     http://git.ovh.iot/redpesk-common/rp-service-gps
+URL:     http://git.ovh.iot/redpesk-common/gps-binding
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires: afm-rpm-macros
 BuildRequires: cmake
 BuildRequires: gcc gcc-c++
-BuildRequires: cmake-apps-module
+BuildRequires: afb-cmake-modules
 BuildRequires: pkgconfig(json-c)
 BuildRequires: pkgconfig(libsystemd) >= 222
-BuildRequires: pkgconfig(afb-daemon)
+BuildRequires: pkgconfig(afb-binding)
 BuildRequires: pkgconfig(libmicrohttpd) >= 0.9.55
 BuildRequires: pkgconfig(afb-helpers)
 BuildRequires: gpsd gpsd-clients gpsd-devel gpsd-libs

@@ -4,8 +4,8 @@
     "metadata": {
         "uid": "Test",
         "version": "1.0",
-        "api": "aft-rp-service-gps",
-        "info": "rp-service-gps binding",
+        "api": "aft-gps-binding",
+        "info": "gps-binding binding",
         "require": [
             "gps"
         ]

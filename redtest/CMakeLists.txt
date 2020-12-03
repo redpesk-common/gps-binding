@@ -14,9 +14,9 @@
 # limitations under the License.
 ###########################################################################
 
-set(BINDING_NAME "rp-service-gps")
-set(BINDING_TEST_NAME "rp-service-gps-test")
-set(PACKAGE_REDTEST "rp-service-gps-redtest")
+set(BINDING_NAME "gps-binding")
+set(BINDING_TEST_NAME "gps-binding-test")
+set(PACKAGE_REDTEST "gps-binding-redtest")
 
 configure_file(run-redtest.in run-redtest @ONLY)
 
