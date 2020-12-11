@@ -1,0 +1,18 @@
+type: books
+books:
+-
+    id: gps-binding
+    title: GPS
+    description: GPS binding documentation
+    keywords: GPS, localization, gpsd
+    author: "IotBzh"
+    version: master
+    chapters:
+    - url: 1_architecture.md
+      name: Architecture presentation
+    - url: 2_installation.md
+      name: Installation
+    - url: 3_usage.md
+      name: Usage guide
+    - url: 4_api_description.md
+      name: GPS API description
