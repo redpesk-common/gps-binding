@@ -78,7 +78,7 @@ sudo zypper in gps-binding
 
 ### From sources
 
-We advise you to use the [local builder](http://redpesk-doc.lorient.iot/docs/en/master/getting_started/local-builder/local-builder.html) for building the binding sources. The local builder comes with everything setup to build Redpesk® projects.
+We advise you to use the [local builder](../getting_started/local_builder/docs/1_installation.html) for building the binding sources. The local builder comes with everything setup to build Redpesk® projects.
 
 #### Dependencies
 
