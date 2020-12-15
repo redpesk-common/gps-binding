@@ -757,7 +757,7 @@ static void* GpsdConnectionManagementThread(void *arg) {
 		#endif
 		AFB_INFO("Connected to GPSd");
 		// connected
-		gpsd_online = TRUE;
+		gpsd_online = true;
 		userdata->nb_retries = 0; // reset counter
 		ret = pthread_create(&EventThread, NULL, &EventManagementThread, NULL);
 		if (ret != 0) {
