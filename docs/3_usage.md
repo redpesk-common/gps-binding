@@ -12,24 +12,27 @@ When a GPS is plugged in through serial or usb port, GPSD will automatically det
 
 Tested with GlobalSat BU-353-S4 USB GPS device.
 
-For further information, see official [GPSD website](https://gpsd.gitlab.io/gpsd/index.html)
+For further information, see official [GPSD website](): https://gpsd.gitlab.io/gpsd/index.html
 
 #### Using an NMEA log
 
 You may need to kill all other GPSD processes before running a nmea log :
 
 ##### Ubuntu
+
 ```bash
 sudo killall gpsd
 ```
 
 ##### Fedora
+
 ```bash
 sudo service gpsd stop
 sudo service gpsd.socket stop
 ```
 
 Then you can launch the log playing with :
+
 ```bash
 gpsfake -S {file.nmea}
 ```
@@ -41,7 +44,9 @@ To check if GPSD is now providing expected data, you can use any GPSD client suc
 ```bash
 cgps -c
 ```
+
 or
+
 ```bash
 xgps
 ```
@@ -62,6 +67,7 @@ afb-binder --rootdir=./package --binding=./package/lib/libgps-binding.so --port=
 
 If you installed the binding either through package or through make install command:
 
+```bash
 export GPS_BINDING_DIR=/var/local/lib/afm/applications/gps-binding
 afb-binder \
 --rootdir=$GPS_BINDING_DIR \
@@ -69,10 +75,11 @@ afb-binder \
 --port=1234 \
 --tracereq=common \
 -vvv
+```
 
 ### Call for GPS binding API
 
-Now that the binding is running and attached to GPSD, you can call for any verb provided by the ```gps``` described in the [GPS API description](./4_api_description.html) part.
+Now that the binding is running and attached to GPSD, you can call for any verb provided by the `gps` described in the [GPS API description](./4_api_description.html) part.
 
 #### Binding UI
 
@@ -95,6 +102,7 @@ dnf install gps-binding-redtest
 ```
 
 Then launch the run-redtest script:
+
 ```bash
 /usr/lib/gps-binding-redtest/redtest/run-redtest
 ```
