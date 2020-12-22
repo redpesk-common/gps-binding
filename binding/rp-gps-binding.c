@@ -1,7 +1,7 @@
 /**
  * Copyright (C) 2019-2020 IoT.bzh Company
  * Contact: https://www.iot.bzh/licensing
- * Author : Aymeric Aillet <aymeric.aillet@iot.bzh>
+ * Author: Aymeric Aillet <aymeric.aillet@iot.bzh>
  *
  * This file is part of the rp-webserver module of the RedPesk project.
  *
