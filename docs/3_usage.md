@@ -12,7 +12,7 @@ When a GPS is plugged in through serial or usb port, GPSD will automatically det
 
 Tested with GlobalSat BU-353-S4 USB GPS device.
 
-For further information, see official [GPSD website](): https://gpsd.gitlab.io/gpsd/index.html
+For further information, see official [GPSD website](https://gpsd.gitlab.io/gpsd/index.html):
 
 #### Using an NMEA log
 
