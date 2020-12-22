@@ -19,8 +19,8 @@
 # Project Info
 # ------------------
 set(PROJECT_NAME gps-binding)
-set(PROJECT_PRETTY_NAME "RP binding for GPS")
-set(PROJECT_DESCRIPTION "Binding for handling NMEA signalisation of GPS")
+set(PROJECT_PRETTY_NAME "GPS Binding")
+set(PROJECT_DESCRIPTION "Binding for handling GPS data from gpsd")
 set(PROJECT_VERSION "1.0")
 set(PROJECT_ICON "icon.png")
 set(PROJECT_AUTHOR "Aymeric Aillet")
@@ -115,7 +115,7 @@ set(WIDGET_ENTRY_POINT lib/libgps-binding.so)
 
 # Print a helper message when every thing is finished
 # ----------------------------------------------------
-set(CLOSING_MESSAGE "Test with: afb-daemon --rootdir=\$\$(pwd)/package --binding=\$\$(pwd)/package/${WIDGET_ENTRY_POINT} --port=1234 --tracereq=common --token=\"1\" --verbose")
+set(CLOSING_MESSAGE "Test with: afb-binder --rootdir=\$\$(pwd)/package --binding=\$\$(pwd)/package/${WIDGET_ENTRY_POINT} --port=1234 --tracereq=common -vvv")
 set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install ${PROJECT_NAME}.wgt")
 
 # Optional dependencies order
