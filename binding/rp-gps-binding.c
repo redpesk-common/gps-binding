@@ -862,11 +862,27 @@ static int Init(afb_api_t api) {
 	return 0;
 }
 
+extern const char * info_verbS;
+
+static void infoVerb (afb_req_t request) {
+
+	enum json_tokener_error jerr;
+
+	json_object * infoArgsJ = json_tokener_parse_verbose(info_verbS, &jerr);
+	if (infoArgsJ == NULL || jerr != json_tokener_success) {
+		afb_req_fail(request, "failed", "failure while packing info() verb arguments !");
+        return;
+    }
+    afb_req_success(request, infoArgsJ, NULL);
+    return;
+}
+
 static const struct afb_verb_v3 binding_verbs[] = {
 	{ .verb = "gps_data",    .callback = GetGpsData,   .info = "Get GNSS data" },
 	{ .verb = "subscribe",   .callback = Subscribe,    .info = "Subscribe to GNSS events with conditions" },
 	{ .verb = "unsubscribe", .callback = Unsubscribe,  .info = "Unsubscribe to GNSS events with conditions" },
-	{ }
+	{ .verb = "info",        .callback = infoVerb,     .info = "API info"},
+	{ .verb = NULL} /* marker for end of the array */
 };
 
 /*
