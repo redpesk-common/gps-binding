@@ -12,7 +12,7 @@ dnf install gps-binding
 
 ### From repository
 
-Firstly, ["Verify Your Build Host"](../developer-guides/host-configuration/docs/1-Setup-your-build-host.html). Indeed, your host needs to have a supported distribution.
+Firstly, ["Verify Your Build Host"]({% chapter_link host-configuration-doc.setup-your-build-host %}). Indeed, your host needs to have a supported distribution.
 Then, you can use the following command-line to get the `gps-binding` binding and all its dependencies. Please use the right paragraph, according to you distribution.
 
 #### Ubuntu 20.04 and 18.04
@@ -78,7 +78,7 @@ sudo zypper in gps-binding
 
 ### From sources
 
-We advise you to use the [local builder](../getting_started/local_builder/docs/1_installation.html) for building the binding sources. The local builder comes with everything setup to build Redpesk® projects.
+We advise you to use the [local builder]({% chapter_link local-builder-doc.installation %}) for building the binding sources. The local builder comes with everything setup to build Redpesk® projects.
 
 #### Dependencies
 
