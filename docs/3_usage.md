@@ -95,7 +95,7 @@ afb-client --human 'ws://localhost:1234/api?token='
 
 ### Redpesk
 
-To run test suite on Redpesk powered target, you should installed provided package:
+To run test suite on redpesk powered target, you should installed provided package:
 
 ```bash
 dnf install gps-binding-redtest

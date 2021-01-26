@@ -1,4 +1,4 @@
-# GPS API for Redpesk®
+# GPS API for redpesk
 
 ## Pre-Requisites
 This binding is using GPSD in order to get positionning informations from a physical GPS device.

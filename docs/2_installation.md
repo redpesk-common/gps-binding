@@ -1,8 +1,8 @@
 # GPS Binding installation guide
 
-## Redpesk target
+## redpesk target
 
-Gps binding is available in standard Redpesk repositories.
+Gps binding is available in standard redpesk repositories.
 
 ```bash
 dnf install gps-binding
@@ -17,7 +17,7 @@ Then, you can use the following command-line to get the `gps-binding` binding an
 
 #### Ubuntu 20.04 and 18.04
 
-Firstly, add the Redpesk "sdk" repository in the list of your packages repositories.
+Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
 
 ```bash
 # Add the repository in your list
@@ -37,7 +37,7 @@ $ sudo apt-get install gps-binding
 
 #### Fedora 31, 32 and 33
 
-Firstly, add the Redpesk "sdk" repository in the list of your packages repositories.
+Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
 
 ```bash
 $ cat << EOF > /etc/yum.repos.d/redpesk-sdk.repo
@@ -60,7 +60,7 @@ dnf install gps-binding
 
 #### OpenSUSE Leap 15.1 and 15.2
 
-Firstly, add the Redpesk "sdk" repository in the list of your packages repositories.
+Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
 
 ```bash
 $ OPENSUSE_VERSION=15.2 # Set the right OpenSUSE version
@@ -95,7 +95,7 @@ We advise you to use the [local builder]({% chapter_link local-builder-doc.insta
 - gpsd-clients
 - Userspace RCU library
 
-Fedora/OpenSUSE/Redpesk:
+Fedora/OpenSUSE/redpesk:
 ```bash
 sudo dnf install gcc make cmake afb-cmake-modules json-c-devel afb-binding-devel libmicrohttpd afb-libhelpers-devel gpsd gpsd-devel gpsd-clients gpsd-libs userspace-rcu-devel
 ```

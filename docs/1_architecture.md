@@ -1,4 +1,4 @@
-# GPS binding for Redpesk®
+# GPS binding for redpesk
 
 ## Architecture
 
