@@ -65,14 +65,6 @@ function()
     _AFT.assertVerbStatusSuccess(api, "subscribe",{data = "gps_data", condition = "frequency", value = 10})
 end)
 
--- This tests 'double unsubscribe'
-_AFT.describe(testPrefix.."double_unsubscribe",
-function()
-    _AFT.assertVerbStatusSuccess(api, "subscribe",{data = "gps_data", condition = "frequency", value = 10})
-    _AFT.assertVerbStatusSuccess(api, "unsubscribe",{data = "gps_data", condition = "frequency", value = 10})
-    _AFT.assertVerbStatusError(api, "unsubscribe",{data = "gps_data", condition = "frequency", value = 10})
-end)
-
 -- This tests 'subscribe wrong frequency value'
 _AFT.testVerbStatusError(testPrefix.."subscribe_wrong_frequency_value",api,"subscribe",{data = "gps_data", condition = "frequency", value = 25}, nil, nil)
 
