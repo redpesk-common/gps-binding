@@ -51,14 +51,17 @@
 	#define gps_read(arg) gps_read(arg, NULL, 0)
 #endif
 
-// enable workaround
+//Enable workaround
 #define AGL_SPEC_802 on
 
-// 60 second max between 2 gpsd connection attemps
+//60 second max between 2 GPSd connection attemps
 #define GPSD_CONNECT_MAX_DELAY 60
 
 #define GPSD_POLLING_MAX_RETRIES 60
 #define GPSD_POLLING_DELAY_MS 2000
+
+//Define the max not used count for an event
+#define EVENT_MAX_NOT_USED 5
 
 //Threads management
 static pthread_t MainThread;
@@ -67,12 +70,12 @@ static pthread_mutex_t GpsDataMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t EventListMutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct gpsd_connection_management_thread_userdate_s {
-	char *host;
-	char *port;
-	int max_retries; 	// 0 or negative values => no maximum
-	int nb_retries;   	// current count of retries
-	struct gps_data_t *gps_data; // as for now, point on global `data`
-	int result;
+	char *host;                     //GPSd host address
+	char *port;                     //GPSd port
+	int max_retries;                //Number of retries before closing
+	int nb_retries;                 //Current count of retries
+	int result;                     //Used to return error
+	struct gps_data_t *gps_data;    //As for now, point on global `data`			
 } gpsd_connection_management_thread_userdata_t;
 
 static struct event_list_node *list;
@@ -100,7 +103,7 @@ static int supported_speed[6] = {20, 30, 50, 90, 110, 130};
  * returns: 1 if value was found in array
  * 			0 otherwise
  */
-int ValueIsInArray(int value, int *array, int array_size){
+int ValueIsInArray(int value, int *array, int array_size) {
 	int i;
 	for (i = 0; i < array_size; i++) {
 		if(array[i] == value) {
@@ -111,18 +114,18 @@ int ValueIsInArray(int value, int *array, int array_size){
 }
 
 /* Function:  GetDistanceInMeters
- * --------------------
- * Calculation of the distance between two GNSS point defined by their
- * latitude/longitude.
+ * ------------------------------
+ * Calculation of the distance between two GPS 
+ * points thanks to their latitude and longitude.
  *
- * lat1: latitude of first point
+ * lat1:  latitude of first point
  * long1: longitude of first point
- * lat2: latitude of second point
+ * lat2:  latitude of second point
  * long2: longitude of second point
  *
- * returns: the distance between the points in meters
+ * returns: Distance between the points in meters
  */
-double GetDistanceInMeters(double lat1, double long1, double lat2, double long2){
+double GetDistanceInMeters(double lat1, double long1, double lat2, double long2) {
 	lat1 = lat1 * (M_PI/180);
 	long1 = long1 * (M_PI/180);
 	lat2 = lat2 * (M_PI/180);
@@ -135,24 +138,24 @@ double GetDistanceInMeters(double lat1, double long1, double lat2, double long2)
 
 	ans = 2 * asin(sqrt(ans));
 
-	//radius of earth in km
+	//Radius of earth in km
 	ans = ans * 6371;
 
-	//km to m
+	//Conversion from km to m
 	ans = ans * 1000;
 
 	return ans;
-
 }
 
 /* Function:  UpdateMaxFreq
- * --------------------
- * Browse the event list to find the highest frequency event and update the
- * global variable value.
+ * ------------------------
+ * Browse the event list, find the event with the
+ * highest operating frequency and fill the global
+ * variable max_freq accordingly 
  *
- * returns: Void
+ * returns: nothing
  */
-void UpdateMaxFreq(){
+void UpdateMaxFreq() {
 	pthread_mutex_lock(&EventListMutex);
 	event_list_node *list_cpy = list;
 	pthread_mutex_unlock(&EventListMutex);
@@ -160,10 +163,10 @@ void UpdateMaxFreq(){
 	event_list_node *tmp_node = cds_list_entry(list_cpy->list_head.next, event_list_node, list_head);
 	int tmp_freq = 0;
 
-	//parcours de la liste
-	while(tmp_node != list_cpy){
-		if(tmp_node->condition_type == FREQUENCY){
-			if(tmp_node->condition_value.freq > tmp_freq){
+	//Find the highest operating frequency in the event list
+	while (tmp_node != list_cpy) {
+		if (tmp_node->condition_type == FREQUENCY) {
+			if (tmp_node->condition_value.freq > tmp_freq) {
 				tmp_freq = tmp_node->condition_value.freq;
 			}
 		}
@@ -172,74 +175,80 @@ void UpdateMaxFreq(){
 
 		usleep(100000);
 	}
-	if(max_freq != tmp_freq){
+
+	//Apply the new highest frequency
+	if (max_freq != tmp_freq) {
 		max_freq = tmp_freq;
 		AFB_INFO("New max freq %d Hz", max_freq);
 	}
 }
 
 /* Function:  EventJsonToName
- * --------------------
- * Generate the name of an event its condition and value.
+ * --------------------------
+ * Generates the name of an event thanks to the 
+ * information about it (condition type, value ...).
  *
- * jcondition : Json oject containing information about the event.
- * result : String to store the result of the generation
+ * jcondition : Json oject containing the event information.
+ * result : Storing string for the event name.
  *
  * returns: -1 if failed
  *          0 if name well generated
  */
-int EventJsonToName(json_object *jcondition, char** result){
+int EventJsonToName(json_object *jcondition, char** result) {
 	char* event_name;
-    struct json_object *json_data_type;
-	if(!json_object_object_get_ex(jcondition, "data", &json_data_type)) return -1;
-	if(!json_object_is_type(json_data_type, json_type_string)) return -1;
+
+	//Verification of the json structure
+	struct json_object *json_data_type;
+	if (!json_object_object_get_ex(jcondition, "data", &json_data_type)) return -1;
+	if (!json_object_is_type(json_data_type, json_type_string)) return -1;
 	const char* data_type = json_object_get_string(json_data_type);
 
 	struct json_object *json_condition_type;
-	if(!json_object_object_get_ex(jcondition, "condition", &json_condition_type)) return -1;
-	if(!json_object_is_type(json_condition_type, json_type_string)) return -1;
+	if (!json_object_object_get_ex(jcondition, "condition", &json_condition_type)) return -1;
+	if (!json_object_is_type(json_condition_type, json_type_string)) return -1;
 	const char* type = json_object_get_string(json_condition_type);
 
 	struct json_object *json_condition_value;
-	if(!json_object_object_get_ex(jcondition, "value", &json_condition_value)) return -1;
+	if (!json_object_object_get_ex(jcondition, "value", &json_condition_value)) return -1;
 
-    if(!strcasecmp(data_type, "gps_data")){
-        //only way to know the type of "value" is to check the type of the condition before
-        if(!strcasecmp(type, "frequency")) {
-            if(!json_object_is_type(json_condition_value, json_type_int)) return -1;
-            int value = json_object_get_int(json_condition_value);
-            if(asprintf(&event_name, "gps_data_freq_%d", value) == -1) return -1;
-        }
-        else if(!strcasecmp(type, "movement")) {
-            if(!json_object_is_type(json_condition_value, json_type_int)) return -1;
-            int value = json_object_get_int(json_condition_value);
-            if(asprintf(&event_name, "gps_data_movement_%d", value) == -1) return -1;
-        }
-        else if (!strcasecmp(type, "max_speed")){
-            if(!json_object_is_type(json_condition_value, json_type_int))	return -1;
-            int value = json_object_get_int(json_condition_value);
-            if(asprintf(&event_name, "gps_data_speed_%d", value) == -1) return -1;
-        }
-        else {
-            AFB_ERROR("Unsuported event type.");
-            return -1;
-        }
-    }
-    else{
-        AFB_ERROR("Unsuported data type.");
-        return -1;
-    }
+	//Define event name depending of data, condition and value
+	if (!strcasecmp(data_type, "gps_data")) {
+		//Value type is depending on condition type
+		if (!strcasecmp(type, "frequency")) {
+	    	if (!json_object_is_type(json_condition_value, json_type_int)) return -1;
+	    	int value = json_object_get_int(json_condition_value);
+	    	if (asprintf(&event_name, "gps_data_freq_%d", value) == -1) return -1;
+		}
+		else if (!strcasecmp(type, "movement")) {
+        	if (!json_object_is_type(json_condition_value, json_type_int)) return -1;
+        	int value = json_object_get_int(json_condition_value);
+        	if (asprintf(&event_name, "gps_data_movement_%d", value) == -1) return -1;
+		}
+		else if (!strcasecmp(type, "max_speed")) {
+			if (!json_object_is_type(json_condition_value, json_type_int)) return -1;
+			int value = json_object_get_int(json_condition_value);
+			if (asprintf(&event_name, "gps_data_speed_%d", value) == -1) return -1;
+		}
+		else {
+			AFB_ERROR("Unsupported event type.");
+			return -1;
+		}
+	}
+	else {
+		AFB_ERROR("Unsupported data type.");
+		return -1;
+	}
 
-	if(result != NULL) *result = event_name;
+	if (result != NULL) *result = event_name;
 
 	return 0;
 }
 
 /* Function:  EventListAdd
- * --------------------
+ * -----------------------
  * Add an event to the event list.
  *
- * jcondition : Json oject containing information about the event.
+ * jcondition : Json oject containing the event information.
  * is_disposable : true : if the event has to be protected from deletion
  *                 false : if not
  * node : where to store the pointer to the created event
@@ -247,7 +256,7 @@ int EventJsonToName(json_object *jcondition, char** result){
  * returns: -1 if failed
  *          0 if event well created
  */
-int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **node){
+int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **node) {
 	event_list_node *newEvent = malloc(sizeof(event_list_node));
 	CDS_INIT_LIST_HEAD(&newEvent->list_head);
 	if (!newEvent) {
@@ -257,19 +266,20 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 
 	char* event_name;
 	struct json_object *json_condition_type;
-	if(!json_object_object_get_ex(jcondition, "condition", &json_condition_type)) return -1;
-	if(!json_object_is_type(json_condition_type, json_type_string)) return -1;
+	if (!json_object_object_get_ex(jcondition, "condition", &json_condition_type)) return -1;
+	if (!json_object_is_type(json_condition_type, json_type_string)) return -1;
 	const char* type = json_object_get_string(json_condition_type);
 
 	struct json_object *json_value;
-	if(!json_object_object_get_ex(jcondition, "value", &json_value)) return -1;
+	if (!json_object_object_get_ex(jcondition, "value", &json_value)) return -1;
 
-	if(!strcasecmp(type, "frequency")) {
-		if(!json_object_is_type(json_value, json_type_int)) return -1;
+	//Create the new event
+	if (!strcasecmp(type, "frequency")) {
+		if (!json_object_is_type(json_value, json_type_int)) return -1;
 		int value = json_object_get_int(json_value);
 
-		if(ValueIsInArray(value, supported_freq, ARRAY_SIZE(supported_freq))) {
-			if(asprintf(&event_name, "gps_data_freq_%d", value) > 0){
+		if (ValueIsInArray(value, supported_freq, ARRAY_SIZE(supported_freq))) {
+			if (asprintf(&event_name, "gps_data_freq_%d", value) > 0) {
 				newEvent->event = afb_daemon_make_event(event_name);
 				newEvent->is_disposable = is_disposable;
 				newEvent->not_used_count = 0;
@@ -280,16 +290,16 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 			else return -1;
 		}
 		else {
-			AFB_ERROR("Unsuported frequency.");
+			AFB_ERROR("Unsupported frequency.");
 			return -1;
 		}
 	}
-	else if(!strcasecmp(type, "movement")) {
-		if(!json_object_is_type(json_value, json_type_int)) return -1;
+	else if (!strcasecmp(type, "movement")) {
+		if (!json_object_is_type(json_value, json_type_int)) return -1;
 		int value = json_object_get_int(json_value);
 
-		if(ValueIsInArray(value, supported_movement, ARRAY_SIZE(supported_movement))) {
-			if(asprintf(&event_name, "gps_data_movement_%d", value) > 0){
+		if (ValueIsInArray(value, supported_movement, ARRAY_SIZE(supported_movement))) {
+			if (asprintf(&event_name, "gps_data_movement_%d", value) > 0) {
 				newEvent->event = afb_daemon_make_event(event_name);
 				newEvent->is_disposable = is_disposable;
 				newEvent->not_used_count = 0;
@@ -301,16 +311,16 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 			else return -1;
 		}
 		else {
-			AFB_ERROR("Unsuported movement range.");
+			AFB_ERROR("Unsupported movement range.");
 			return -1;
 		}
 	}
-	else if (!strcasecmp(type, "max_speed")){
-		if(!json_object_is_type(json_value, json_type_int)) return -1;
+	else if (!strcasecmp(type, "max_speed")) {
+		if (!json_object_is_type(json_value, json_type_int)) return -1;
 		int value = json_object_get_int(json_value);
 
-		if(ValueIsInArray(value, supported_speed, ARRAY_SIZE(supported_speed))) {
-			if(asprintf(&event_name, "gps_data_speed_%d", value) > 0){
+		if (ValueIsInArray(value, supported_speed, ARRAY_SIZE(supported_speed))) {
+			if (asprintf(&event_name, "gps_data_speed_%d", value) > 0) {
 				newEvent->event = afb_daemon_make_event(event_name);
 				newEvent->is_disposable = is_disposable;
 				newEvent->not_used_count = 0;
@@ -321,49 +331,50 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 			else return -1;
 		}
 		else {
-			AFB_ERROR("Unsuported max speed.");
+			AFB_ERROR("Unsupported max speed.");
 			return -1;
 		}
 	}
 	else {
-		AFB_ERROR("Unsuported event type.");
+		AFB_ERROR("Unsupported event type.");
 		return -1;
 	}
 
-	//add NewEvent to the list
+	//Add NewEvent to the list
 	pthread_mutex_lock(&EventListMutex);
 	cds_list_add_tail(&newEvent->list_head, &list->list_head);
 	pthread_mutex_unlock(&EventListMutex);
 
-	if(*node != NULL) *node = newEvent;
+	if (*node != NULL) *node = newEvent;
 
 	AFB_INFO("Event %s well created.", afb_event_name(newEvent->event));
 	return 0;
 }
 
 /* Function:  EventListFind
- * --------------------
- * Find if a specific event is already existing in the list.
+ * ------------------------
+ * Find an event in the list.
  *
- * jcondition : Json oject containing information about the event.
+ * jcondition : Json oject containing the event information.
  * found_node : where to store the pointer to the found event
  *
  * returns: false if failed
- *          true  if a corresponding event has been found
+ *          true  if event found
  */
-bool EventListFind(json_object *jcondition, event_list_node **found_node){
+bool EventListFind(json_object *jcondition, event_list_node **found_node) {
 	event_list_node *iterator;
 	bool found = false;
 
-    //find next event by type+value (using its event name)
+    //Generate the name of the event we are looking for
 	char* event_name = NULL;
-	if(EventJsonToName(jcondition, &event_name) == -1) return false;
+	if (EventJsonToName(jcondition, &event_name) == -1) return false;
 
+	//Browse the event list for an event with this name
 	pthread_mutex_lock(&EventListMutex);
 	cds_list_for_each_entry(iterator, &list->list_head, list_head) {
 		if (strcmp (event_name, afb_event_name(iterator->event))) continue;
 
-		if(*found_node != NULL) *found_node = iterator;
+		if (*found_node != NULL) *found_node = iterator;
 		found = true;
 		break;
 	}
@@ -373,45 +384,45 @@ bool EventListFind(json_object *jcondition, event_list_node **found_node){
 }
 
 /* Function:  EventListDeleteByNode
- * --------------------
- * Delete an event (defined by a pointer to it) in the list.
+ * --------------------------------
+ * Delete an event in the list.
  *
- * node : pointer to the node to suppress
+ * node : pointer to the event to delete
  *
  * returns: false if failed
- *          true  if the event has been found and suppressed
+ *          true  if the event has been found and suppressed (if not disposable)
  */
-bool EventListDeleteByNode(event_list_node **node){
+bool EventListDeleteByNode(event_list_node **node) {
 	event_list_node *iterator, *tmp;
 	event_list_node *cpy_node = *node;
-	bool suppressed = false;
+	bool found = false;
 	pthread_mutex_lock(&EventListMutex);
 	cds_list_for_each_entry_safe(iterator, tmp, &list->list_head, list_head) {
 		if (strcmp (afb_event_name(cpy_node->event), afb_event_name(iterator->event))) continue;
 
-		if(!iterator->is_disposable) {
+		if (!iterator->is_disposable) {
             cds_list_del(&iterator->list_head);
         }
+		else AFB_ERROR("Can't delete a disposable event.");
 
 		free(iterator);
-		suppressed = true;
+		found = true;
 		break;
 	}
 	pthread_mutex_unlock(&EventListMutex);
-	return suppressed;
+	return found;
 }
 
 /* Function:  JsonDataCompletion
- * --------------------
+ * -----------------------------
  * Marcheling of gps data in a Json object
  *
  * jdata : Json object where to temporary store data
  *
- * returns: NULL if mode fix unavaible
+ * returns: NULL if mode fix unavailable
  *          Json object containing gps data
  */
-static json_object *JsonDataCompletion(json_object *jdata)
-{
+static json_object *JsonDataCompletion(json_object *jdata) {
 	json_object *JsonValue = NULL;
 
 	if (data.fix.mode < 2) {
@@ -446,7 +457,7 @@ static json_object *JsonDataCompletion(json_object *jdata)
 	JsonValue = json_object_new_double(data.fix.eps);
 	json_object_object_add(jdata, "speed error", JsonValue);
 
-	if(data.fix.mode == MODE_3D){
+	if (data.fix.mode == MODE_3D) {
 		JsonValue = json_object_new_double(data.fix.altitude);
 		json_object_object_add(jdata, "altitude", JsonValue);
 
@@ -466,7 +477,7 @@ static json_object *JsonDataCompletion(json_object *jdata)
 	JsonValue = json_object_new_double(data.fix.epd);
 	json_object_object_add(jdata, "heading error", JsonValue);
 
-	//support the change from timestamp_t (double) to timespec struct (done with API 9.0)
+	//Support the change from timestamp_t (double) to timespec struct (done with API 9.0)
 	#if GPSD_API_MAJOR_VERSION>8
 		double timestamp_converted = (double)data.fix.time.tv_sec + ((double)data.fix.time.tv_nsec / 1000000000);
 		JsonValue = json_object_new_double(timestamp_converted);
@@ -483,48 +494,45 @@ static json_object *JsonDataCompletion(json_object *jdata)
 }
 
 /* Function:  GetGpsData
- * --------------------
- * Called by "gps_data" verb to send gps data to the client.
+ * ---------------------
+ * Callback for "gps_data" verb.
+ * It builds the gps date json structure and returns it.
  *
- * request : Request from the client
+ * request : Request from the afb client.
  *
- * returns: Void
+ * returns: nothing
  */
-static void GetGpsData(afb_req_t request)
-{
+static void GetGpsData(afb_req_t request) {
 	json_object *JsonData = NULL;
 	pthread_mutex_lock(&GpsDataMutex);
 
 	JsonData = JsonDataCompletion(json_object_new_object());
-	if (JsonData) {
-		afb_req_success(request, JsonData, "GNSS location data");
-	} else {
-		afb_req_fail(request, "failed", "No GNSS fix");
-	}
+	
+	if (JsonData) afb_req_success(request, JsonData, "GNSS location data");
+	else afb_req_fail(request, "failed", "No GNSS fix");
 
 	pthread_mutex_unlock(&GpsDataMutex);
 }
 
 /* Function:  Subscribe
  * --------------------
- * Called by "subscribe" verb to subscribe to an event with specific condition.
+ * Callback for "subscribe" verb.
+ * Subscribe a client to a dynamic event.
+ * Create the asked event if not found in the event list.
  *
  * request : Request from the client
  *
- * returns: Void
+ * returns: nothing
  */
-static void Subscribe(afb_req_t request)
-{
+static void Subscribe(afb_req_t request) {
 	json_object *json_request = afb_req_json(request);
 	event_list_node *event_to_subscribe;
 
-	if(!EventJsonToName(json_request, NULL)){
-		if(!EventListFind(json_request, &event_to_subscribe)){
-            AFB_INFO("Event not found.");
-			//event does not exist
-			if(!EventListAdd(json_request, false, &event_to_subscribe)){
-                AFB_INFO("Event %s added.", afb_event_name(event_to_subscribe->event));
-				//event has been added to the list
+	if (!EventJsonToName(json_request, NULL)) {
+		if (!EventListFind(json_request, &event_to_subscribe)) {
+			AFB_INFO("Event not found.");
+			if (!EventListAdd(json_request, false, &event_to_subscribe)) {
+				AFB_INFO("Event %s added.", afb_event_name(event_to_subscribe->event));
 				UpdateMaxFreq();
 			}
 			else {
@@ -532,67 +540,57 @@ static void Subscribe(afb_req_t request)
 				return;
 			}
 		}
-        if(afb_req_subscribe(request, event_to_subscribe->event) == 0){
-					//well subscribed to the event
-                    AFB_INFO("Subscribed to event %s.", afb_event_name(event_to_subscribe->event));
-					afb_req_success(request, NULL, NULL);
+
+		if (afb_req_subscribe(request, event_to_subscribe->event) == 0) {
+			AFB_INFO("Subscribed to event %s.", afb_event_name(event_to_subscribe->event));
+			afb_req_success(request, NULL, NULL);
 		}
 		else afb_req_fail(request, "failed", "Subscription error");
-		return;
 	}
-	else{
-		afb_req_fail(request, "failed", "Request isn't well formated");
-		return;
-	}
+	else afb_req_fail(request, "failed", "Request isn't well formated, please see readme");
+	
+	return;
 }
 
 /* Function:  Unsubscribe
- * --------------------
- * Called by "unsubscribe" verb to unsubscribe to an event with specific condition.
+ * ----------------------
+ * Callback for "unsubscribe" verb.
+ * Unsubscribe a client to a dynamic event.
  *
  * request : Request from the client
  *
- * returns: Void
+ * returns: nothing
  */
-static void Unsubscribe(afb_req_t request)
-{
+static void Unsubscribe(afb_req_t request) {
 	json_object *json_request = afb_req_json(request);
 	event_list_node *event_to_unsubscribe;
 
-	if(!EventJsonToName(json_request, NULL)){
-		if(EventListFind(json_request, &event_to_unsubscribe)){
-			//event exist
-			if(afb_req_unsubscribe(request, event_to_unsubscribe->event) == 0){
-				//well unsubscribe, we dont delete the event in case anyone else needs it
+	if (!EventJsonToName(json_request, NULL)) {
+		if (EventListFind(json_request, &event_to_unsubscribe)) {
+			//Event was found in list
+			if (afb_req_unsubscribe(request, event_to_unsubscribe->event) == 0) {
+				//Unsubscribe successfully, keep the event for another hypothetical client
 				afb_req_success(request, NULL, NULL);
 			}
-			else {
-				afb_req_fail(request, "failed", "Unsubscription error");
-			}
+			else afb_req_fail(request, "failed", "Unsubscription error");
 		}
-		else {
-			//event does not exist
-			afb_req_fail(request, "failed", "Event doesn't exist");
-		}
-		return;
+		else afb_req_fail(request, "failed", "Event doesn't exist");
 	}
-	else{
-		afb_req_fail(request, "failed", "Request isn't well formated");
-		return;
-	}
+	else afb_req_fail(request, "failed", "Request isn't well formated");
+
+	return;
 }
 
 /* Function:  GpsdPolling
- * --------------------
- * Loop while GPSD connection is available and store gps data.
+ * ----------------------
+ * Store gps data as long as the GPSd connection is sustainable.
  *
- * returns: Void
+ * returns: nothing
  */
-static void* GpsdPolling(void *ptr)
-{
+static void* GpsdPolling(void *ptr) {
 	int tries = 0;
 
-	while (tries < GPSD_POLLING_MAX_RETRIES) {
+	while(tries < GPSD_POLLING_MAX_RETRIES) {
 		if (!gps_waiting(&data, MSECS_TO_USECS(GPSD_POLLING_DELAY_MS))) {
 			tries++;
 			continue;
@@ -606,7 +604,7 @@ static void* GpsdPolling(void *ptr)
 		pthread_mutex_unlock(&GpsDataMutex);
 	}
 
-	AFB_INFO("GPSD connection lost, closing.\n");
+	AFB_INFO("GPSd connection lost, closing.\n");
 	gpsd_online = false;
 	gps_stream(&data, WATCH_DISABLE, NULL);
 	gps_close(&data);
@@ -615,29 +613,28 @@ static void* GpsdPolling(void *ptr)
 }
 
 /* Function:  EventManagementThread
- * --------------------
- * Thread handling the sending of events for each registered event.
+ * --------------------------------
+ * Thread browsing the list and sending events to clients 
+ * as long as the connection with GPSd is sustainable.
  *
- * returns: Void
+ * returns: nothing
  */
 static void* EventManagementThread(void *arg) {
 	AFB_INFO("Event management thread online !");
 
-	while(gpsd_online){
-		//start from the head of the list
+	while (gpsd_online) {
+		//Start from the head of the list
 		pthread_mutex_lock(&EventListMutex);
 		event_list_node *list_cpy = list;
 		pthread_mutex_unlock(&EventListMutex);
 
 
-        pthread_mutex_lock(&GpsDataMutex);
+		pthread_mutex_lock(&GpsDataMutex);
 		json_object *jdata = JsonDataCompletion(json_object_new_object());
-        pthread_mutex_unlock(&GpsDataMutex);
+		pthread_mutex_unlock(&GpsDataMutex);
 
-        if(!jdata){
-            continue;
-        }
-
+		if (!jdata) continue;
+        
 		event_list_node *tmp = cds_list_entry(list_cpy->list_head.next, event_list_node, list_head);
 		event_list_node *next = tmp;
 
@@ -646,87 +643,93 @@ static void* EventManagementThread(void *arg) {
 
 		bool found_freq_event = false;
 
-		//parcours de la liste
-		while(tmp != list_cpy){
-			//AFB_INFO("event name : %s", afb_event_name(tmp->event));
+		//Browsing list
+		while (tmp != list_cpy) {
 			next = cds_list_entry(tmp->list_head.next, event_list_node, list_head);
 
-			if(tmp->condition_type == FREQUENCY){
+			if (tmp->condition_type == FREQUENCY) {
 				found_freq_event = true;
-				long accum_us = ( now.tv_sec - tmp->last_value.freq_last_send.tv_sec) * 1000000 + ( now.tv_nsec - tmp->last_value.freq_last_send.tv_nsec) / 1000;
-				//AFB_INFO("event %s, target = %d, accum = %ld", afb_event_name(tmp->event), HZ_TO_USECS(tmp->condition_value.freq), accum_us);
+				long accum_us = (now.tv_sec - tmp->last_value.freq_last_send.tv_sec) * 1000000 + (now.tv_nsec - tmp->last_value.freq_last_send.tv_nsec) / 1000;
 
-				if(accum_us > HZ_TO_USECS(tmp->condition_value.freq)){
-					if(afb_event_push(tmp->event, json_object_get(jdata)) == 0){
-						//protect from an instant deletion of new event
+				//Enough time has passed
+				if (accum_us > HZ_TO_USECS(tmp->condition_value.freq)) {
+					//Event push return an error
+					if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
+						//Delete event if not used anymore
 						tmp->not_used_count++;
-						//AFB_INFO("event : %s, count : %d", afb_event_name(tmp->event), tmp->not_used_count);
-						if(tmp->not_used_count >= 5){
+						if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
 							if (EventListDeleteByNode(&tmp)) {
 								AFB_INFO("Event %s deleted", afb_event_name(tmp->event));
 								UpdateMaxFreq();
 							}
 						}
 					}
+					//Event well pushed
 					else {
-						if(tmp->not_used_count) tmp->not_used_count = 0;
+						if (tmp->not_used_count) tmp->not_used_count = 0;
 					}
+					//Update time from last check even if not pushed
 					tmp->last_value.freq_last_send = now;
 				}
 
 			}
-			else if(tmp->condition_type == MOVEMENT){
+			else if (tmp->condition_type == MOVEMENT) {
 				struct json_object *json_latitude, *json_longitude;
 				json_object_object_get_ex(jdata, "latitude", &json_latitude);
 				json_object_object_get_ex(jdata, "longitude", &json_longitude);
 				double latitude = json_object_get_double(json_latitude);
 				double longitude = json_object_get_double(json_longitude);
 
-				if(GetDistanceInMeters( tmp->last_value.movement_last_lat_lon.latitude, tmp->last_value.movement_last_lat_lon.longitude, latitude, longitude) > tmp->condition_value.movement_range) {
-					if(afb_event_push(tmp->event, json_object_get(jdata)) == 0){
-						//protect from an instant deletion of new event
+				//Distance is higher than the event trigger
+				if (GetDistanceInMeters(tmp->last_value.movement_last_lat_lon.latitude, tmp->last_value.movement_last_lat_lon.longitude, latitude, longitude) > tmp->condition_value.movement_range) {
+					//Event push return an error
+					if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
+						//Delete event if not used anymore
 						tmp->not_used_count++;
-						//AFB_INFO("event : %s, count : %d", afb_event_name(tmp->event), tmp->not_used_count);
-						if(tmp->not_used_count >= 5){
+						if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
 							if (EventListDeleteByNode(&tmp)) {
 								AFB_INFO("Event %s deleted", afb_event_name(tmp->event));
 							}
 						}
 					}
-					else{
-						if(tmp->not_used_count) tmp->not_used_count = 0;
+					//Event well pushed
+					else {
+						if (tmp->not_used_count) tmp->not_used_count = 0;
 						tmp->last_value.movement_last_lat_lon.latitude = latitude;
 						tmp->last_value.movement_last_lat_lon.longitude = longitude;
 					}
 				}
 
 			}
-			else if(tmp->condition_type == MAX_SPEED){
+			else if (tmp->condition_type == MAX_SPEED) {
 				struct json_object *json_speed;
 				json_object_object_get_ex(jdata, "speed", &json_speed);
 				double speed = json_object_get_double(json_speed);
 
-				if((speed*3.6) > (double)(tmp->condition_value.max_speed)){
-					if(!tmp->last_value.above_speed){
-						if(afb_event_push(tmp->event, json_object_get(jdata)) == 0){
-							//protect from an instant deletion of new event
+				//Speed is higher than the event trigger
+				if ((speed*3.6) > (double)(tmp->condition_value.max_speed)) {
+					//Speed wasn't higher than trigger last time
+					if (!tmp->last_value.above_speed) {
+						//Event push return an error
+						if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
+							//Delete event if not used anymore
 							tmp->not_used_count++;
-							//AFB_INFO("event : %s, count : %d", afb_event_name(tmp->event), tmp->not_used_count);
-							if(tmp->not_used_count >= 5){
+							if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
 								if (EventListDeleteByNode(&tmp)) {
 									AFB_INFO("Event %s deleted", afb_event_name(tmp->event));
 								}
 							}
 						}
+						//Event well pushed
 						else {
-							if(tmp->not_used_count) tmp->not_used_count = 0;
+							if (tmp->not_used_count) tmp->not_used_count = 0;
 							tmp->last_value.above_speed = true;
 						}
-
 					}
 					json_object_put(json_speed);
 				}
-				else{
+				//Speed isn't higher than trigger
+				else {
 					tmp->last_value.above_speed = false;
 				}
 			}
@@ -734,9 +737,9 @@ static void* EventManagementThread(void *arg) {
 			tmp = next;
 		}
 
-		//if no frequency related event, poll the list at 1Hz
-        //double check the freq in case that events have been deleted (causing a problematic 0hz freq)
-		if(found_freq_event && (max_freq > 0)) usleep(HZ_TO_USECS(max_freq));
+		//Wait 1s if no frequency related event have been found
+        //Be sure that max_freq has been populated (to avoid synchronisation problem, causing a 0s waiting time)
+		if (found_freq_event && (max_freq > 0)) usleep(HZ_TO_USECS(max_freq));
 		else sleep(1);
 	}
 	AFB_INFO("Event management thread offline !");
@@ -744,33 +747,35 @@ static void* EventManagementThread(void *arg) {
 }
 
 /* Function:  GpsdConnectionManagementThread
- * --------------------
- * Main thread managing the reconnection to GPSD if it has been lost. Also,
- * by extension, managing the launch of the event management thread and the
- * Gpsd Polling functions.
+ * -----------------------------------------
+ * Main thread of the gps binding.
+ * It manage the first connection to GPSd and also further connection attemps.
+ * It also manage the launch of the event management thread if the GPSd connection is up.
  *
- * returns: Void
+ * returns: nothing
  */
 static void* GpsdConnectionManagementThread(void *arg) {
 	gpsd_connection_management_thread_userdata_t *userdata = arg;
 
-	while(true) { // exit condition, if any, occurs in connection loop
+	//Exit condition, if any, occurs in connection loop
+	while (true) { 
 		int ret = -1;
 		unsigned int delay = 1;
-		// try connect...
-		// retry forever when max_retries < 1
-		while(ret != 0
-			  && (userdata->max_retries <= 0
-			      || userdata->nb_retries++ < userdata->max_retries))
-		{
+
+		//Try to open GPSd connection
+		//Retry forever if max_retries <= 0
+		while (ret != 0 && (userdata->max_retries <= 0 || userdata->nb_retries++ < userdata->max_retries)) {
 			ret = gps_open(userdata->host, userdata->port, userdata->gps_data);
 			if (ret != 0) {
-				AFB_NOTICE("gpsd not available yet (errno: %d, \"%s\"). Wait for %.2d seconds before retry...", errno, gps_errstr(errno), delay);
+				AFB_NOTICE("GPSd not available yet (errno: %d, \"%s\"). Wait for %.2d seconds before retry...", errno, gps_errstr(errno), delay);
 				sleep(delay);
 				delay *= 2;
-				if (delay > GPSD_CONNECT_MAX_DELAY) delay=GPSD_CONNECT_MAX_DELAY;
+				if (delay > GPSD_CONNECT_MAX_DELAY) {
+					delay=GPSD_CONNECT_MAX_DELAY;
+				}
 			}
 		}
+		//Exit if gps_open returned an error at last try
 		if (ret != 0) {
 			AFB_ERROR("Too many retries, aborting...");
 			userdata->result = ret;
@@ -780,15 +785,17 @@ static void* GpsdConnectionManagementThread(void *arg) {
 		gps_stream(userdata->gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
 		#ifdef AGL_SPEC_802
 			int tries = 5;
-			// due to the gpsd.socket race condition need to loop till initial event
+			//Due to the gpsd.socket race condition need to loop until initial event
 			do {
 				gps_read(userdata->gps_data);
 			} while (!gps_waiting(userdata->gps_data, MSECS_TO_USECS(2500)) && tries--);
 		#endif
 		AFB_INFO("Connected to GPSd");
-		// connected
+		
 		gpsd_online = true;
-		userdata->nb_retries = 0; // reset counter
+		userdata->nb_retries = 0; //Reset counter for next try
+		
+		//Launch the event management thread
 		ret = pthread_create(&EventThread, NULL, &EventManagementThread, NULL);
 		if (ret != 0) {
 			AFB_ERROR("Could not create thread for event handling...");
@@ -796,20 +803,19 @@ static void* GpsdConnectionManagementThread(void *arg) {
 
 		pthread_detach(EventThread);
 
+		//GpsdPolling returns if GPSd connection's lost
 		GpsdPolling(NULL);
-		// GpsdPolling will return when gpsd connection's lost...
 	}
 }
 
 /* Function:  GpsInit
- * --------------------
- * Initialize the connection to GSPD ans start the main thread.
+ * ------------------
+ * Initialize the connection to GSPd and start the main thread.
  *
  * returns: 0 if went well
  *          other if not
  */
-static int GpsInit()
-{
+static int GpsInit() {
 	int ret;
 
 	gpsd_connection_management_thread_userdata_t *userdata = malloc(sizeof(gpsd_connection_management_thread_userdata_t));
@@ -820,13 +826,13 @@ static int GpsInit()
 
 	userdata->host = getenv("RPGPS_HOST") ? : "localhost";
 	userdata->port = getenv("RPGPS_SERVICE") ? : "2947";
-	userdata->max_retries = -1;
+	userdata->max_retries = -1;		//Value <= 0 for infinite
 	userdata->nb_retries = 0;
 	userdata->gps_data = &data;
 
 	ret = pthread_create(&MainThread, NULL, &GpsdConnectionManagementThread, userdata);
 	if (ret != 0) {
-		AFB_ERROR("Could not create thread for listening to gpsd socket...");
+		AFB_ERROR("Could not create thread for listening to GPSd socket...");
 		return ret;
 	}
 
@@ -835,22 +841,21 @@ static int GpsInit()
 }
 
 /* Function:  Init
- * --------------------
+ * ---------------
  * Initialize binding ressources and start the GPS initialization.
  *
  * returns: 0 if went well
  *          -1 if not
  */
-static int Init(afb_api_t api)
-{
+static int Init(afb_api_t api) {
 	gpsd_online = false;
 	max_freq = 0;
 	list = malloc(sizeof(event_list_node));
 	CDS_INIT_LIST_HEAD(&list->list_head);
 
-	AFB_NOTICE("Initiating GPSD connection !");
-	if(GpsInit()){
-		AFB_ERROR("Encountered a problem when initiating GPSD mode");
+	AFB_NOTICE("Configuring GPSd connection !");
+	if (GpsInit()) {
+		AFB_ERROR("Encountered a problem while launching GPSd management thread");
 		return -1;
 	}
 
@@ -858,8 +863,7 @@ static int Init(afb_api_t api)
 }
 
 static const struct afb_verb_v3 binding_verbs[] = {
-	{ .verb = "gps_data",    .callback = GetGpsData,     .info = "Get GNSS data" },
-	//get2Dlocation, etc ??
+	{ .verb = "gps_data",    .callback = GetGpsData,   .info = "Get GNSS data" },
 	{ .verb = "subscribe",   .callback = Subscribe,    .info = "Subscribe to GNSS events with conditions" },
 	{ .verb = "unsubscribe", .callback = Unsubscribe,  .info = "Unsubscribe to GNSS events with conditions" },
 	{ }
