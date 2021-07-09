@@ -80,8 +80,35 @@ static struct gps_data_t data;
 static bool gpsd_online;
 static int max_freq;
 
+//Supported values for each condition type
+static int supported_freq[5] = {1, 10, 20, 50, 100};
+static int supported_movement[6] = {1, 10, 100, 300, 500, 1000};
+static int supported_speed[6] = {20, 30, 50, 90, 110, 130};
+
 #define MSECS_TO_USECS(x) (x * 1000)
 #define HZ_TO_USECS(x) (1000000/x)
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+/* Function:  ValueIsInArray
+ * --------------------
+ * Check is a value is in the provided array.
+ *
+ * value: value to find
+ * array: array to search in
+ * array_size: size of the array
+ *
+ * returns: 1 if value was found in array
+ * 			0 otherwise
+ */
+int ValueIsInArray(int value, int *array, int array_size){
+	int i;
+	for (i = 0; i < array_size; i++) {
+		if(array[i] == value) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
 /* Function:  GetDistanceInMeters
  * --------------------
@@ -241,7 +268,7 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 		if(!json_object_is_type(json_value, json_type_int)) return -1;
 		int value = json_object_get_int(json_value);
 
-		if(value == 1 || value == 10 || value == 20 || value == 50 || value == 100) {
+		if(ValueIsInArray(value, supported_freq, ARRAY_SIZE(supported_freq))) {
 			if(asprintf(&event_name, "gps_data_freq_%d", value) > 0){
 				newEvent->event = afb_daemon_make_event(event_name);
 				newEvent->is_disposable = is_disposable;
@@ -261,7 +288,7 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 		if(!json_object_is_type(json_value, json_type_int)) return -1;
 		int value = json_object_get_int(json_value);
 
-		if(value == 1 || value == 10 || value == 100 || value == 300 || value == 500 || value == 1000) {
+		if(ValueIsInArray(value, supported_movement, ARRAY_SIZE(supported_movement))) {
 			if(asprintf(&event_name, "gps_data_movement_%d", value) > 0){
 				newEvent->event = afb_daemon_make_event(event_name);
 				newEvent->is_disposable = is_disposable;
@@ -282,7 +309,7 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 		if(!json_object_is_type(json_value, json_type_int)) return -1;
 		int value = json_object_get_int(json_value);
 
-		if(value == 20 || value == 30 || value == 50 || value == 90 || value == 110 || value == 130) {
+		if(ValueIsInArray(value, supported_speed, ARRAY_SIZE(supported_speed))) {
 			if(asprintf(&event_name, "gps_data_speed_%d", value) > 0){
 				newEvent->event = afb_daemon_make_event(event_name);
 				newEvent->is_disposable = is_disposable;
