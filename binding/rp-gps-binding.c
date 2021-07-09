@@ -500,7 +500,10 @@ static void Subscribe(afb_req_t request)
 				//event has been added to the list
 				UpdateMaxFreq();
 			}
-			else afb_req_fail(request, "failed", "Event creation failed");
+			else {
+				afb_req_fail(request, "failed", "Event creation failed");
+				return;
+			}
 		}
         if(afb_req_subscribe(request, event_to_subscribe->event) == 0){
 					//well subscribed to the event
