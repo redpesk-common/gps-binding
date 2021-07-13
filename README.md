@@ -1,7 +1,7 @@
 # GPS API for redpesk
 
 ## Pre-Requisites
-This binding is using GPSD in order to get positionning informations from a physical GPS device.
+This binding is using GPSD in order to get positioning information from a physical GPS device.
 
 In order to build and run the binding, you will need several packages, gpsd itself, developments libraries and gpsd-clients.
 
@@ -15,6 +15,8 @@ sudo apt install gpsd libgps-dev gpsd-clients liburcu-dev
 sudo dnf install gpsd gpsd-clients gpsd-devel gpsd-libs userspace-rcu-devel
 ```
 
+For Fedora 32 & 33, gpsd-devel is no longer available, you can follow [this guide](https://gpsd.gitlab.io/gpsd/installation.html#_special_notes_for_fedora_derivatives) to build it yourself.
+
 ## Build & run the binding
 
 You can build the binding in the same way than any other binding :
@@ -25,7 +27,7 @@ cmake ..
 make
 ```
 
-Then, you can run the binding with the command suggested at the end of the previous make commande.
+Then, you can run the binding with the command suggested at the end of the previous make command.
 
 ## Verbs and subscription
 
@@ -47,7 +49,7 @@ gps gps_data
 
 ### subscribe
 
-- avalaible data :
+- available data :
     - gps_data
 
 - available condition & values :
@@ -81,7 +83,7 @@ Exactly the same as the subscribe verb
 
 ### JSON Answer format
 
-The content of the answer is rawly comming from the libgps, you can find a lot of information about them direclty in this library.
+The content of the answer is rawly coming from the libgps, you can find a lot of information about them directly in this library.
 Here is the Json content :
 
 | Key                   | Type		| Description                                           |
@@ -95,7 +97,7 @@ Here is the Json content :
 | altitude              | Double    | Altitude in meters 									|
 | climb                 | Double    | Vertical speed, meters/sec 							|
 | heading (true north)  | Double    | Course made good (relative to true north) 			|
-| timestamp             | Double    | Standart timestamp 									|
+| timestamp             | Double    | Standard timestamp 									|
 
 Each value from "Latitude" is also accompanied by its error value expressed in the same unit as this one. (ex : latitude error).
 
