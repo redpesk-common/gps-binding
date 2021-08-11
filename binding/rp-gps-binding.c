@@ -54,6 +54,10 @@
 //Enable workaround
 #define AGL_SPEC_802 on
 
+//Enable NaN values from gpsd, to ensure a consistant json structure
+//Disabled by default to ensure compatibility with as many clients as possible
+#define SEND_NAN_VALUES false
+
 //60 second max between 2 GPSd connection attemps
 #define GPSD_CONNECT_MAX_DELAY 60
 
@@ -180,6 +184,27 @@ void UpdateMaxFreq() {
 	if (max_freq != tmp_freq) {
 		max_freq = tmp_freq;
 		AFB_INFO("New max freq %d Hz", max_freq);
+	}
+}
+
+/* Function:  AddDoubleToJson
+ * --------------------------
+ * Add a double to a JsonObject
+ * It handle double Nan value and
+ * the SEND_NAN_VALUES option.
+ *  
+ * data : double to add
+ * jdata : json_object to add to
+ * key : json key
+ * 
+ * returns: nothing
+ */
+static void AddDoubleToJson(double data, json_object *jdata, char *key) {
+	json_object *JsonValue = NULL;
+
+	if(!isnan(data) || SEND_NAN_VALUES)  {
+		JsonValue = json_object_new_double(data);
+		json_object_object_add(jdata, key, JsonValue);
 	}
 }
 
@@ -439,43 +464,22 @@ static json_object *JsonDataCompletion(json_object *jdata) {
 	JsonValue = json_object_new_int(data.fix.mode);
 	json_object_object_add(jdata, "mode", JsonValue);
 
-	JsonValue = json_object_new_double(data.fix.latitude);
-	json_object_object_add(jdata, "latitude", JsonValue);
-
-	JsonValue = json_object_new_double(data.fix.epy);
-	json_object_object_add(jdata, "latitude error", JsonValue);
-
-	JsonValue = json_object_new_double(data.fix.longitude);
-	json_object_object_add(jdata, "longitude", JsonValue);
-
-	JsonValue = json_object_new_double(data.fix.epx);
-	json_object_object_add(jdata, "longitude error", JsonValue);
-
-	JsonValue = json_object_new_double(data.fix.speed);
-	json_object_object_add(jdata, "speed", JsonValue);
-
-	JsonValue = json_object_new_double(data.fix.eps);
-	json_object_object_add(jdata, "speed error", JsonValue);
+	AddDoubleToJson(data.fix.latitude,		jdata, "latitude");
+	AddDoubleToJson(data.fix.epy,			jdata, "latitude error");
+	AddDoubleToJson(data.fix.longitude,		jdata, "longitude");
+	AddDoubleToJson(data.fix.epx,			jdata, "longitude error");
+	AddDoubleToJson(data.fix.speed,			jdata, "speed");
+	AddDoubleToJson(data.fix.eps,			jdata, "speed error");
 
 	if (data.fix.mode == MODE_3D) {
-		JsonValue = json_object_new_double(data.fix.altitude);
-		json_object_object_add(jdata, "altitude", JsonValue);
-
-		JsonValue = json_object_new_double(data.fix.epv);
-		json_object_object_add(jdata, "altitude error", JsonValue);
-
-		JsonValue = json_object_new_double(data.fix.climb);
-		json_object_object_add(jdata, "climb", JsonValue);
-
-		JsonValue = json_object_new_double(data.fix.epc);
-		json_object_object_add(jdata, "climb error", JsonValue);
+		AddDoubleToJson(data.fix.altitude,	jdata, "altitude");
+		AddDoubleToJson(data.fix.epv, 		jdata, "altitude error");
+		AddDoubleToJson(data.fix.climb, 	jdata, "climb");
+		AddDoubleToJson(data.fix.epc, 		jdata, "climb error");
 	}
 
-	JsonValue = json_object_new_double(data.fix.track);
-	json_object_object_add(jdata, "heading (true north)", JsonValue);
-
-	JsonValue = json_object_new_double(data.fix.epd);
-	json_object_object_add(jdata, "heading error", JsonValue);
+	AddDoubleToJson(data.fix.track, 		jdata, "heading (true north)");
+	AddDoubleToJson(data.fix.epd, 			jdata, "heading error");
 
 	//Support the change from timestamp_t (double) to timespec struct (done with API 9.0)
 	#if GPSD_API_MAJOR_VERSION>8
@@ -487,8 +491,7 @@ static json_object *JsonDataCompletion(json_object *jdata) {
 
 	json_object_object_add(jdata, "timestamp", JsonValue);
 
-	JsonValue = json_object_new_double(data.fix.ept);
-	json_object_object_add(jdata, "timestamp error", JsonValue);
+	AddDoubleToJson(data.fix.ept, 			jdata, "timestamp error");
 
 	return jdata;
 }
