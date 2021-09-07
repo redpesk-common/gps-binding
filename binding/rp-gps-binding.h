@@ -16,7 +16,7 @@ typedef struct event_list_node
 {
 	struct cds_list_head	list_head;
     afb_event_t event;		//event
-	bool is_disposable;		//is the event destroyable ?
+	bool is_protected;		//is the event protected from deletion ?
 	int not_used_count;
 	enum condition_type_enum condition_type;	//condition type of the event
 	union					//condition value of the event

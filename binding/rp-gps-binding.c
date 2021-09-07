@@ -274,14 +274,14 @@ int EventJsonToName(json_object *jcondition, char** result) {
  * Add an event to the event list.
  *
  * jcondition : Json oject containing the event information.
- * is_disposable : true : if the event has to be protected from deletion
+ * is_protected : true : if the event has to be protected from deletion
  *                 false : if not
  * node : where to store the pointer to the created event
  *
  * returns: -1 if failed
  *          0 if event well created
  */
-int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **node) {
+int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **node) {
 	event_list_node *newEvent = malloc(sizeof(event_list_node));
 	CDS_INIT_LIST_HEAD(&newEvent->list_head);
 	if (!newEvent) {
@@ -306,7 +306,7 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 		if (ValueIsInArray(value, supported_freq, ARRAY_SIZE(supported_freq))) {
 			if (asprintf(&event_name, "gps_data_freq_%d", value) > 0) {
 				newEvent->event = afb_daemon_make_event(event_name);
-				newEvent->is_disposable = is_disposable;
+				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = FREQUENCY;
 				newEvent->condition_value.freq = value;
@@ -326,7 +326,7 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 		if (ValueIsInArray(value, supported_movement, ARRAY_SIZE(supported_movement))) {
 			if (asprintf(&event_name, "gps_data_movement_%d", value) > 0) {
 				newEvent->event = afb_daemon_make_event(event_name);
-				newEvent->is_disposable = is_disposable;
+				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = MOVEMENT;
 				newEvent->condition_value.movement_range = value;
@@ -347,7 +347,7 @@ int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **
 		if (ValueIsInArray(value, supported_speed, ARRAY_SIZE(supported_speed))) {
 			if (asprintf(&event_name, "gps_data_speed_%d", value) > 0) {
 				newEvent->event = afb_daemon_make_event(event_name);
-				newEvent->is_disposable = is_disposable;
+				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = MAX_SPEED;
 				newEvent->condition_value.max_speed = value;
@@ -414,28 +414,26 @@ bool EventListFind(json_object *jcondition, event_list_node **found_node) {
  *
  * node : pointer to the event to delete
  *
- * returns: false if failed
- *          true  if the event has been found and suppressed (if not disposable)
+ * returns: false if not found
+ *          true  if the event has been found and deleted
  */
 bool EventListDeleteByNode(event_list_node **node) {
 	event_list_node *iterator, *tmp;
 	event_list_node *cpy_node = *node;
-	bool found = false;
+	bool deleted = false;
 	pthread_mutex_lock(&EventListMutex);
 	cds_list_for_each_entry_safe(iterator, tmp, &list->list_head, list_head) {
 		if (strcmp (afb_event_name(cpy_node->event), afb_event_name(iterator->event))) continue;
 
-		if (!iterator->is_disposable) {
-            cds_list_del(&iterator->list_head);
-        }
-		else AFB_ERROR("Can't delete a disposable event.");
-
+		//Delete the event
+		cds_list_del(&iterator->list_head);
+		deleted = true;
+		
 		free(iterator);
-		found = true;
 		break;
 	}
 	pthread_mutex_unlock(&EventListMutex);
-	return found;
+	return deleted;
 }
 
 /* Function:  JsonDataCompletion
@@ -658,12 +656,14 @@ static void* EventManagementThread(void *arg) {
 				if (accum_us > HZ_TO_USECS(tmp->condition_value.freq)) {
 					//Event push return an error
 					if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
-						//Delete event if not used anymore
-						tmp->not_used_count++;
-						if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
-							if (EventListDeleteByNode(&tmp)) {
-								AFB_INFO("Event %s deleted", afb_event_name(tmp->event));
-								UpdateMaxFreq();
+						if(!tmp->is_protected) {
+							//If an unprotected event is not used anymore, delete it
+							tmp->not_used_count++;
+							if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
+								if (EventListDeleteByNode(&tmp)) {
+									AFB_INFO("Event %s deleted.", afb_event_name(tmp->event));
+									UpdateMaxFreq();
+								}
 							}
 						}
 					}
@@ -687,11 +687,13 @@ static void* EventManagementThread(void *arg) {
 				if (GetDistanceInMeters(tmp->last_value.movement_last_lat_lon.latitude, tmp->last_value.movement_last_lat_lon.longitude, latitude, longitude) > tmp->condition_value.movement_range) {
 					//Event push return an error
 					if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
-						//Delete event if not used anymore
-						tmp->not_used_count++;
-						if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
-							if (EventListDeleteByNode(&tmp)) {
-								AFB_INFO("Event %s deleted", afb_event_name(tmp->event));
+						if(!tmp->is_protected) {
+							//If an unprotected event is not used anymore, delete it
+							tmp->not_used_count++;
+							if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
+								if (EventListDeleteByNode(&tmp)) {
+									AFB_INFO("Event %s deleted.", afb_event_name(tmp->event));
+								}
 							}
 						}
 					}
@@ -715,11 +717,13 @@ static void* EventManagementThread(void *arg) {
 					if (!tmp->last_value.above_speed) {
 						//Event push return an error
 						if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
-							//Delete event if not used anymore
-							tmp->not_used_count++;
-							if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
-								if (EventListDeleteByNode(&tmp)) {
-									AFB_INFO("Event %s deleted", afb_event_name(tmp->event));
+							if(!tmp->is_protected) {
+								//If an unprotected event is not used anymore, delete it
+								tmp->not_used_count++;
+								if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
+									if (EventListDeleteByNode(&tmp)) {
+										AFB_INFO("Event %s deleted.", afb_event_name(tmp->event));
+									}
 								}
 							}
 						}
