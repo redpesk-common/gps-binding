@@ -21,9 +21,9 @@ Firstly, add the redpesk "sdk" repository in the list of your packages repositor
 
 ```bash
 # Add the repository in your list
-$ echo "deb https://download.redpesk.bzh/redpesk-devel/releases/33/sdk/$DISTRO/ ./" | sudo tee -a /etc/apt/sources.list
+$ echo "deb https://download.redpesk.bzh/redpesk-lts/{{ site.redpesk-os.latest }}/sdk/$DISTRO/ ./" | sudo tee -a /etc/apt/sources.list
 # Add the repository key
-$ curl -L https://download.redpesk.bzh/redpesk-devel/releases/33/sdk/$DISTRO/Release.key | sudo apt-key add -
+$ curl -L https://download.redpesk.bzh/redpesk-lts/{{ site.redpesk-os.latest }}/sdk/$DISTRO/Release.key | sudo apt-key add -
 ```
 
 Then, update the list of packages and simply install the `gps-binding` package.
@@ -43,7 +43,7 @@ Firstly, add the redpesk "sdk" repository in the list of your packages repositor
 $ cat << EOF > /etc/yum.repos.d/redpesk-sdk.repo
 [redpesk-sdk]
 name=redpesk-sdk
-baseurl=https://download.redpesk.bzh/redpesk-devel/releases/33/sdk/$DISTRO
+baseurl=https://download.redpesk.bzh/redpesk-lts/{{ site.redpesk-os.latest }}/sdk/$DISTRO
 enabled=1
 repo_gpgcheck=0
 type=rpm
@@ -65,7 +65,7 @@ Firstly, add the redpesk "sdk" repository in the list of your packages repositor
 ```bash
 $ OPENSUSE_VERSION=15.2 # Set the right OpenSUSE version
 # Add the repository in your list
-$ sudo zypper ar https://download.redpesk.bzh/redpesk-devel/releases/33/sdk/$DISTRO/ redpesk-sdk
+$ sudo zypper ar https://download.redpesk.bzh/redpesk-lts/{{ site.redpesk-os.latest }}/sdk/$DISTRO/ redpesk-sdk
 # Refresh your repositories
 $ sudo zypper ref
 ```
@@ -78,7 +78,7 @@ sudo zypper in gps-binding
 
 ### From sources
 
-We advise you to use the [local builder]({% chapter_link local-builder-doc.installation %}) for building the binding sources. The local builder comes with everything setup to build Redpesk® projects.
+We advise you to use the [local builder]({% chapter_link local-builder-doc.installation %}) for building the binding sources. The local builder comes with everything setup to build redpesk projects.
 
 #### Dependencies
 
