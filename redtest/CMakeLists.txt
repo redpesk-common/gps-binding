@@ -22,9 +22,8 @@
 
 set(BINDING_NAME "gps-binding")
 set(BINDING_TEST_NAME "gps-binding-test")
-set(PACKAGE_REDTEST "gps-binding-redtest")
 
 configure_file(run-redtest.in run-redtest @ONLY)
 
 install(PROGRAMS ${CMAKE_BINARY_DIR}/redtest/run-redtest
-	DESTINATION /usr/lib/${PACKAGE_REDTEST}/redtest)
+	DESTINATION /usr/libexec/redtest/${BINDING_NAME}/)
