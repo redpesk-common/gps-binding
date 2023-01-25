@@ -27,7 +27,7 @@
 set(PROJECT_NAME gps-binding)
 set(PROJECT_PRETTY_NAME "GPS Binding")
 set(PROJECT_DESCRIPTION "Binding for handling GPS data from gpsd")
-set(PROJECT_VERSION "1.0")
+set(PROJECT_VERSION "1.1.2")
 set(PROJECT_ICON "icon.png")
 set(PROJECT_AUTHOR "Aymeric Aillet")
 set(PROJECT_AUTHOR_MAIL "aymeric.aillet@iot.bzh")
