@@ -40,7 +40,6 @@ add_library(gps-binding MODULE
 SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
 	PREFIX "lib"
 	LABELS "BINDING"
-	LINK_FLAGS ${BINDINGS_LINK_FLAG}
 	OUTPUT_NAME ${TARGET_NAME}
 )
 
@@ -48,10 +47,4 @@ SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
 TARGET_LINK_LIBRARIES(${TARGET_NAME} ${link_libraries})
 TARGET_LINK_OPTIONS(${TARGET_NAME} PUBLIC -fprofile-arcs)
 
-add_custom_command(
-	OUTPUT json_info.c
-	COMMAND echo 'const char * info_verbS=\"\\' > ${JSON_INFO_C}
-	COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/info_verb.json | sed -e 's/$$/\\\\/' -e 's/\"/\\\\\"/g' >> ${JSON_INFO_C}
-	COMMAND echo '\"\;' >> ${JSON_INFO_C}
-	DEPENDS info_verb.json
-)
+info_verb_generate(${TARGET_NAME})
