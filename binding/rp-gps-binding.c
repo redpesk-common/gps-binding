@@ -42,8 +42,6 @@
 #include <urcu/list.h>
 #include <math.h>
 
-#define AFB_BINDING_VERSION 3
-#include <afb/afb-binding.h>
 
 #include "rp-gps-binding.h"
 
@@ -281,7 +279,7 @@ int EventJsonToName(json_object *jcondition, char** result) {
  * returns: -1 if failed
  *          0 if event well created
  */
-int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **node) {
+int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **node, afb_req_t request) {
 	event_list_node *newEvent = malloc(sizeof(event_list_node));
 	CDS_INIT_LIST_HEAD(&newEvent->list_head);
 	if (!newEvent) {
@@ -290,7 +288,7 @@ int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **n
 	}
 
 	char* event_name;
-	struct json_object *json_condition_type;
+	json_object *json_condition_type;
 	if (!json_object_object_get_ex(jcondition, "condition", &json_condition_type)) return -1;
 	if (!json_object_is_type(json_condition_type, json_type_string)) return -1;
 	const char* type = json_object_get_string(json_condition_type);
@@ -305,7 +303,8 @@ int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **n
 
 		if (ValueIsInArray(value, supported_freq, ARRAY_SIZE(supported_freq))) {
 			if (asprintf(&event_name, "gps_data_freq_%d", value) > 0) {
-				newEvent->event = afb_daemon_make_event(event_name);
+				afb_api_t api = afb_req_get_api(request);
+				if(afb_api_new_event(api, event_name, &newEvent->event) < 0) return -1;
 				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = FREQUENCY;
@@ -325,7 +324,8 @@ int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **n
 
 		if (ValueIsInArray(value, supported_movement, ARRAY_SIZE(supported_movement))) {
 			if (asprintf(&event_name, "gps_data_movement_%d", value) > 0) {
-				newEvent->event = afb_daemon_make_event(event_name);
+				afb_api_t api = afb_req_get_api(request);
+				if(afb_api_new_event(api, event_name, &newEvent->event) < 0) return -1;
 				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = MOVEMENT;
@@ -346,7 +346,8 @@ int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **n
 
 		if (ValueIsInArray(value, supported_speed, ARRAY_SIZE(supported_speed))) {
 			if (asprintf(&event_name, "gps_data_speed_%d", value) > 0) {
-				newEvent->event = afb_daemon_make_event(event_name);
+				afb_api_t api = afb_req_get_api(request);
+				if(afb_api_new_event(api, event_name, &newEvent->event) < 0) return -1;
 				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = MAX_SPEED;
@@ -496,22 +497,26 @@ static json_object *JsonDataCompletion(json_object *jdata) {
 
 /* Function:  GetGpsData
  * ---------------------
- * Callback for "gps_data" verb.
+ * Callback for "gps-data" verb.
  * It builds the gps date json structure and returns it.
  *
  * request : Request from the afb client.
  *
  * returns: nothing
  */
-static void GetGpsData(afb_req_t request) {
+static void GetGpsData(afb_req_t request, unsigned argc, afb_data_t const argv[]) {
 	json_object *JsonData = NULL;
 	pthread_mutex_lock(&GpsDataMutex);
 
 	JsonData = JsonDataCompletion(json_object_new_object());
 	
-	if (JsonData) afb_req_success(request, JsonData, "GNSS location data");
-	else afb_req_fail(request, "failed", "No GNSS fix");
-
+	if (JsonData) {
+		afb_req_reply_json_c_hold(request, 0, JsonData);
+	}
+	else {
+		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "failed, no GNSS fix");
+	} 
+	
 	pthread_mutex_unlock(&GpsDataMutex);
 }
 
@@ -525,30 +530,43 @@ static void GetGpsData(afb_req_t request) {
  *
  * returns: nothing
  */
-static void Subscribe(afb_req_t request) {
-	json_object *json_request = afb_req_json(request);
+static void Subscribe(afb_req_t request, unsigned argc, afb_data_t const argv[]) {
+	afb_data_t result;
+	
+	if (afb_req_param_convert(request, 0, AFB_PREDEFINED_TYPE_JSON_C, &result) < 0) {
+		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "failed to convert argument to JSON_C");
+		return;
+	}
+
+	json_object *json_request = (json_object *) afb_data_ro_pointer(result);
+	if (!json_request) {
+		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "failed to get pointer to argument");
+		return;
+	}
+
 	event_list_node *event_to_subscribe;
 
 	if (!EventJsonToName(json_request, NULL)) {
 		if (!EventListFind(json_request, &event_to_subscribe)) {
 			AFB_INFO("Event not found.");
-			if (!EventListAdd(json_request, false, &event_to_subscribe)) {
+			if (!EventListAdd(json_request, false, &event_to_subscribe, request)) {
 				AFB_INFO("Event %s added.", afb_event_name(event_to_subscribe->event));
 				UpdateMaxFreq();
 			}
 			else {
-				afb_req_fail(request, "failed", "Event creation failed");
+				afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "Event creation failed");
 				return;
 			}
 		}
 
 		if (afb_req_subscribe(request, event_to_subscribe->event) == 0) {
 			AFB_INFO("Subscribed to event %s.", afb_event_name(event_to_subscribe->event));
-			afb_req_success(request, NULL, NULL);
+			afb_req_reply(request, 0, 1, &result);
 		}
-		else afb_req_fail(request, "failed", "Subscription error");
+				
+		else afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "Subscription error");
 	}
-	else afb_req_fail(request, "failed", "Request isn't well formated, please see readme");
+	else afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "Request isn't well formated, please see readme");
 	
 	return;
 }
@@ -562,8 +580,19 @@ static void Subscribe(afb_req_t request) {
  *
  * returns: nothing
  */
-static void Unsubscribe(afb_req_t request) {
-	json_object *json_request = afb_req_json(request);
+static void Unsubscribe(afb_req_t request, unsigned argc, afb_data_t const argv[]) {
+	afb_data_t result;
+	
+	if (afb_req_param_convert(request, 0, AFB_PREDEFINED_TYPE_JSON_C, &result) < 0) {
+		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "failed to convert argument to JSON_C");
+		return;
+	}
+
+	json_object *json_request = (json_object *) afb_data_ro_pointer(result);
+	if (!json_request) {
+		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "failed to get pointer to argument");
+		return;
+	}
 	event_list_node *event_to_unsubscribe;
 
 	if (!EventJsonToName(json_request, NULL)) {
@@ -571,14 +600,39 @@ static void Unsubscribe(afb_req_t request) {
 			//Event was found in list
 			if (afb_req_unsubscribe(request, event_to_unsubscribe->event) == 0) {
 				//Unsubscribe successfully, keep the event for another hypothetical client
-				afb_req_success(request, NULL, NULL);
-			}
-			else afb_req_fail(request, "failed", "Unsubscription error");
-		}
-		else afb_req_fail(request, "failed", "Event doesn't exist");
-	}
-	else afb_req_fail(request, "failed", "Request isn't well formated");
 
+				afb_req_reply_json_c_hold(request, 0, json_request);
+			}
+			else afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "Unsubscription error");
+		}
+		else afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "Event does not exist");
+	}
+	else afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "Request isn't well formated");
+
+	return;
+}
+
+extern const char * info_verbS;
+
+/* Function:  infoVerb
+ * ----------------------
+ * Callback for "infoVerb" verb.
+ *
+ * request :
+ *
+ * returns: 
+ */
+static void infoVerb (afb_req_t request, unsigned argc, afb_data_t const argv[]) {
+
+	enum json_tokener_error jerr;
+
+	json_object * infoArgsJ = json_tokener_parse_verbose(info_verbS, &jerr);
+	if (infoArgsJ == NULL || jerr != json_tokener_success) {
+		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "failure while packing info() verb arguments");
+        return;
+    }
+	afb_req_reply_json_c_hold(request, 0, infoArgsJ);
+	
 	return;
 }
 
@@ -647,15 +701,16 @@ static void* EventManagementThread(void *arg) {
 		//Browsing list
 		while (tmp != list_cpy) {
 			next = cds_list_entry(tmp->list_head.next, event_list_node, list_head);
+			afb_data_t data = afb_data_json_c_hold(jdata);
 
 			if (tmp->condition_type == FREQUENCY) {
 				found_freq_event = true;
 				long accum_us = (now.tv_sec - tmp->last_value.freq_last_send.tv_sec) * 1000000 + (now.tv_nsec - tmp->last_value.freq_last_send.tv_nsec) / 1000;
-
+				
 				//Enough time has passed
 				if (accum_us > HZ_TO_USECS(tmp->condition_value.freq)) {
 					//Event push return an error
-					if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
+					if (afb_event_push(tmp->event, 1, &data) == 0) {
 						if(!tmp->is_protected) {
 							//If an unprotected event is not used anymore, delete it
 							tmp->not_used_count++;
@@ -686,7 +741,7 @@ static void* EventManagementThread(void *arg) {
 				//Distance is higher than the event trigger
 				if (GetDistanceInMeters(tmp->last_value.movement_last_lat_lon.latitude, tmp->last_value.movement_last_lat_lon.longitude, latitude, longitude) > tmp->condition_value.movement_range) {
 					//Event push return an error
-					if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
+					if (afb_event_push(tmp->event, 1, &data) == 0) {
 						if(!tmp->is_protected) {
 							//If an unprotected event is not used anymore, delete it
 							tmp->not_used_count++;
@@ -716,7 +771,7 @@ static void* EventManagementThread(void *arg) {
 					//Speed wasn't higher than trigger last time
 					if (!tmp->last_value.above_speed) {
 						//Event push return an error
-						if (afb_event_push(tmp->event, json_object_get(jdata)) == 0) {
+						if (afb_event_push(tmp->event, 1, &data) == 0) {
 							if(!tmp->is_protected) {
 								//If an unprotected event is not used anymore, delete it
 								tmp->not_used_count++;
@@ -847,57 +902,65 @@ static int GpsInit() {
 	return 0;
 }
 
-/* Function:  Init
- * ---------------
- * Initialize binding ressources and start the GPS initialization.
- *
- * returns: 0 if went well
- *          -1 if not
- */
-static int Init(afb_api_t api) {
-	gpsd_online = false;
-	max_freq = 0;
-	list = malloc(sizeof(event_list_node));
-	CDS_INIT_LIST_HEAD(&list->list_head);
+/**
+* Binding CallBack
+* @param api the api that receive the CallBack
+* @param ctlarg    data associated to the call
+* @param userdata  the userdata of the api (@see afb_api_get_userdata)
+*/
+int binding_ctl(afb_api_t api, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *userdata) {
+	switch(ctlid) {
+	case afb_ctlid_Init:
+		gpsd_online = false;
+		max_freq = 0;
+		list = malloc(sizeof(event_list_node));
+		CDS_INIT_LIST_HEAD(&list->list_head);
 
-	AFB_NOTICE("Configuring GPSd connection !");
-	if (GpsInit()) {
-		AFB_ERROR("Encountered a problem while launching GPSd management thread");
-		return -1;
+		AFB_API_NOTICE(api, "Configuring GPSd connection !");
+		if (GpsInit()) {
+			AFB_API_ERROR(api, "Encountered a problem while launching GPSd management thread");
+			return -1;
+		}
+		break;
+	default:
+		break;
 	}
-
 	return 0;
 }
 
-extern const char * info_verbS;
-
-static void infoVerb (afb_req_t request) {
-
-	enum json_tokener_error jerr;
-
-	json_object * infoArgsJ = json_tokener_parse_verbose(info_verbS, &jerr);
-	if (infoArgsJ == NULL || jerr != json_tokener_success) {
-		afb_req_fail(request, "failed", "failure while packing info() verb arguments !");
-        return;
-    }
-    afb_req_success(request, infoArgsJ, NULL);
-    return;
-}
-
-static const struct afb_verb_v3 binding_verbs[] = {
-	{ .verb = "gps_data",    .callback = GetGpsData,   .info = "Get GNSS data" },
-	{ .verb = "subscribe",   .callback = Subscribe,    .info = "Subscribe to GNSS events with conditions" },
-	{ .verb = "unsubscribe", .callback = Unsubscribe,  .info = "Unsubscribe to GNSS events with conditions" },
-	{ .verb = "info",        .callback = infoVerb,     .info = "API info"},
-	{ .verb = NULL} /* marker for end of the array */
+static const afb_verb_t binding_verbs[] = {
+	{
+		.verb = "gps-data",
+		.callback = GetGpsData,
+		.info = "Get GNSS data"
+	},
+	{
+		.verb = "subscribe",
+		.callback = Subscribe,
+		.info = "Subscribe to GNSS events with condition"
+	},
+	{
+		.verb = "unsubscribe",
+		.callback = Unsubscribe,
+		.info = "Unsubscribe to GNSS events with conditions"
+	},
+	{
+		.verb = "info",
+		.callback = infoVerb,
+		.info = "API info"
+	},
+	{
+		.verb = NULL /*marker for the end of the array*/
+	}
 };
+
 
 /*
  * binder API description
  */
-const struct afb_binding_v3 afbBindingV3 = {
+const struct afb_binding_v4 afbBindingV4 = {
 	.api = "gps",
 	.specification = "GNSS/GPS API",
 	.verbs = binding_verbs,
-	.init = Init,
+	.mainctl = binding_ctl,
 };

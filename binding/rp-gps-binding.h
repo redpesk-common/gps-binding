@@ -2,8 +2,10 @@
 #include <time.h>
 #include <urcu/list.h>
 
-#define AFB_BINDING_VERSION 3
+#define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
+#include <afb-helpers4/afb-req-utils.h>
+#include <afb-helpers4/afb-data-utils.h>
 
 enum condition_type_enum
 {
@@ -39,7 +41,7 @@ typedef struct event_list_node
 
 extern void UpdateMaxFreq();
 extern int EventJsonToName(json_object *jcondition, char** result);
-extern int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **node);
+extern int EventListAdd(json_object *jcondition, bool is_disposable, event_list_node **node, afb_req_t request);
 extern bool EventListFind(json_object *jcondition, event_list_node **found_node);
 extern bool EventListDeleteByNode(event_list_node **node);
 

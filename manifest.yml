@@ -1,0 +1,21 @@
+%YAML 1.2
+---
+# .rpconfig/manifest.yml documentation: http://redpesk-doc-internal.lorient.iot/docs/en/master/developer-guides/manifest.yml.html
+# This file is used by afb-app-manager when installing a packaged binding, mainly to set the correct permissions
+
+rp-manifest: 1
+id: gps-binding
+version: 2.0.0
+
+description: Provides a binding for handling GPS data from gpsd
+author: Aymeric Aillet <Aymeric.Aillet@iot.bzh>
+license: "GPL-3.0-only OR LicenseRef-IoT.bzh"
+
+targets:
+  - target: main
+    content:
+      type: application/vnd.agl.service
+      src: lib/libgps-binding.so
+    provided-api:
+      - name: gps
+        value: ws

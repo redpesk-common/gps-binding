@@ -22,6 +22,44 @@
 # $RP_END_LICENSE$
 ###########################################################################
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.3)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/conf.d/cmake/config.cmake)
+project(gps-binding
+    VERSION 2.0.0
+    DESCRIPTION "Binding for handling GPS data from gpsd"
+    HOMEPAGE_URL "https://github.com/redpesk-common/gps-binding"
+    LANGUAGES C
+)
+
+# Declare options
+set(AFM_APP_DIR ${CMAKE_INSTALL_PREFIX}/redpesk CACHE PATH "Applications directory")
+set(APP_DIR ${AFM_APP_DIR}/${PROJECT_NAME})
+
+# Check dependencies
+include(FindPkgConfig)
+pkg_check_modules(deps REQUIRED
+    json-c
+    afb-binding>=4.1.0
+    libgps
+    libsystemd>=222
+    liburcu
+    afb-binding
+    afb-helpers4
+)
+
+# Build
+add_library(gps-binding SHARED
+                        binding/rp-gps-binding.c
+                        binding/rp-gps-binding.h
+                        binding/json_info.c)
+target_link_libraries(gps-binding ${deps_LDFLAGS})
+
+# This version script is a linker script which exports all symbols named "afbBinding*" and makes all the other symbols local only
+pkg_get_variable(vscript afb-binding version_script)
+if(vscript)
+    target_link_options(gps-binding PRIVATE -Wl,--version-script=${vscript})
+endif(vscript)
+
+# Install
+install(TARGETS gps-binding DESTINATION ${APP_DIR}/lib)
+install(FILES rpconfig/manifest.yml DESTINATION ${APP_DIR}/.rpconfig)

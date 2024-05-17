@@ -15,16 +15,11 @@ dnf install gps-binding
 Firstly, ["Verify Your Build Host"]({% chapter_link host-configuration-doc.setup-your-build-host %}). Indeed, your host needs to have a supported distribution.
 Then, you can use the following command-line to get the `gps-binding` binding and all its dependencies. Please use the right paragraph, according to you distribution.
 
-#### Ubuntu 20.04 and 18.04
+#### Ubuntu
 
 Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
 
-```bash
-# Add the repository in your list
-$ echo "deb https://download.redpesk.bzh/redpesk-lts/{{ site.redpesk-os.latest }}/sdk/$DISTRO/ ./" | sudo tee -a /etc/apt/sources.list
-# Add the repository key
-$ curl -L https://download.redpesk.bzh/redpesk-lts/{{ site.redpesk-os.latest }}/sdk/$DISTRO/Release.key | sudo apt-key add -
-```
+[Installation RedpPesk Factory]({% chapter_link rp-cli-doc.installation %})
 
 Then, update the list of packages and simply install the `gps-binding` package.
 
@@ -35,22 +30,11 @@ $ sudo apt update
 $ sudo apt-get install gps-binding
 ```
 
-#### Fedora 31, 32 and 33
+#### Fedora
 
 Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
 
-```bash
-$ cat << EOF > /etc/yum.repos.d/redpesk-sdk.repo
-[redpesk-sdk]
-name=redpesk-sdk
-baseurl=https://download.redpesk.bzh/redpesk-lts/{{ site.redpesk-os.latest }}/sdk/$DISTRO
-enabled=1
-repo_gpgcheck=0
-type=rpm
-gpgcheck=0
-skip_if_unavailable=True
-EOF
-```
+[Installation RedpPesk Factory]({% chapter_link rp-cli-doc.installation %})
 
 Then, simply install the `gps-binding` package.
 
@@ -58,17 +42,11 @@ Then, simply install the `gps-binding` package.
 dnf install gps-binding
 ```
 
-#### OpenSUSE Leap 15.1 and 15.2
+#### OpenSUSE Leap
 
 Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
 
-```bash
-$ OPENSUSE_VERSION=15.2 # Set the right OpenSUSE version
-# Add the repository in your list
-$ sudo zypper ar https://download.redpesk.bzh/redpesk-lts/{{ site.redpesk-os.latest }}/sdk/$DISTRO/ redpesk-sdk
-# Refresh your repositories
-$ sudo zypper ref
-```
+[Installation RedpPesk Factory]({% chapter_link rp-cli-doc.installation %})
 
 Then, simply install the `gps-binding` package.
 
@@ -96,11 +74,13 @@ We advise you to use the [local builder]({% chapter_link local-builder-doc.insta
 - Userspace RCU library
 
 Fedora/OpenSUSE/redpesk:
+
 ```bash
 sudo dnf install gcc make cmake afb-cmake-modules json-c-devel afb-binding-devel libmicrohttpd afb-libhelpers-devel gpsd gpsd-devel gpsd-clients gpsd-libs userspace-rcu-devel
 ```
 
 Ubuntu:
+
 ```bash
 sudo apt install gcc make cmake afb-cmake-modules-bin libsystemd-dev libjson-c-dev afb-binding-dev libmicrohttpd12 afb-libhelpers-dev gpsd libgps-dev gpsd-clients liburcu-dev
 ```

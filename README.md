@@ -124,8 +124,8 @@ sudo killall gpsd
 ```
 ### Fedora
 ```bash
-sudo service gpsd stop
-sudo service gpsd.socket stop
+sudo systemctl stop gpsd
+sudo systemctl stop gpsd.socket
 ```
 
 Then you can launch the log playing with :
