@@ -701,7 +701,6 @@ static void* EventManagementThread(void *arg) {
 		//Browsing list
 		while (tmp != list_cpy) {
 			next = cds_list_entry(tmp->list_head.next, event_list_node, list_head);
-			afb_data_t data = afb_data_json_c_hold(jdata);
 
 			if (tmp->condition_type == FREQUENCY) {
 				found_freq_event = true;
@@ -709,7 +708,8 @@ static void* EventManagementThread(void *arg) {
 				
 				//Enough time has passed
 				if (accum_us > HZ_TO_USECS(tmp->condition_value.freq)) {
-					//Event push return an error
+					json_object_get(jdata);
+					afb_data_t data = afb_data_json_c_hold(jdata);					
 					if (afb_event_push(tmp->event, 1, &data) == 0) {
 						if(!tmp->is_protected) {
 							//If an unprotected event is not used anymore, delete it
@@ -741,6 +741,8 @@ static void* EventManagementThread(void *arg) {
 				//Distance is higher than the event trigger
 				if (GetDistanceInMeters(tmp->last_value.movement_last_lat_lon.latitude, tmp->last_value.movement_last_lat_lon.longitude, latitude, longitude) > tmp->condition_value.movement_range) {
 					//Event push return an error
+					json_object_get(jdata);
+					afb_data_t data = afb_data_json_c_hold(jdata);
 					if (afb_event_push(tmp->event, 1, &data) == 0) {
 						if(!tmp->is_protected) {
 							//If an unprotected event is not used anymore, delete it
@@ -771,6 +773,8 @@ static void* EventManagementThread(void *arg) {
 					//Speed wasn't higher than trigger last time
 					if (!tmp->last_value.above_speed) {
 						//Event push return an error
+						json_object_get(jdata);
+						afb_data_t data = afb_data_json_c_hold(jdata);
 						if (afb_event_push(tmp->event, 1, &data) == 0) {
 							if(!tmp->is_protected) {
 								//If an unprotected event is not used anymore, delete it
@@ -798,6 +802,8 @@ static void* EventManagementThread(void *arg) {
 
 			tmp = next;
 		}
+
+		json_object_put(jdata);
 
 		//Wait 1s if no frequency related event have been found
         //Be sure that max_freq has been populated (to avoid synchronisation problem, causing a 0s waiting time)
