@@ -802,7 +802,6 @@ static void* EventManagementThread(void *arg) {
 							tmp->last_value.above_speed = true;
 						}
 					}
-					json_object_put(json_speed);
 				}
 				//Speed isn't higher than trigger
 				else {
