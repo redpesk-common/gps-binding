@@ -174,8 +174,6 @@ void UpdateMaxFreq() {
 		}
 
 		tmp_node = cds_list_entry(tmp_node->list_head.next, event_list_node, list_head);
-
-		usleep(100000);
 	}
 
 	//Apply the new highest frequency
