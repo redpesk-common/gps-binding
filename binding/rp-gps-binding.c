@@ -524,9 +524,10 @@ static json_object *JsonDataCompletion(json_object *jdata) {
  */
 static void GetGpsData(afb_req_t request, unsigned argc, afb_data_t const argv[]) {
 	json_object *JsonData = NULL;
+	
 	pthread_mutex_lock(&GpsDataMutex);
-
 	JsonData = JsonDataCompletion(json_object_new_object());
+	pthread_mutex_unlock(&GpsDataMutex);
 	
 	if (JsonData) {
 		afb_req_reply_json_c_hold(request, 0, JsonData);
@@ -534,8 +535,6 @@ static void GetGpsData(afb_req_t request, unsigned argc, afb_data_t const argv[]
 	else {
 		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "failed, no GNSS fix");
 	} 
-	
-	pthread_mutex_unlock(&GpsDataMutex);
 }
 
 /* Function:  Subscribe
