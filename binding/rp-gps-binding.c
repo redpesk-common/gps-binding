@@ -212,7 +212,7 @@ static void AddDoubleToJson(double data, json_object *jdata, char *key) {
  * information about it (condition type, value ...).
  *
  * jcondition : Json oject containing the event information.
- * result : Storing string for the event name.
+ * result : Storing string for the event name. The caller owns the allocated string.
  *
  * returns: -1 if failed
  *          0 if name well generated
@@ -262,7 +262,10 @@ int EventJsonToName(json_object *jcondition, char** result) {
 		return -1;
 	}
 
-	if (result != NULL) *result = event_name;
+	if (result != NULL)
+		*result = event_name;
+	else
+		free(event_name);
 
 	return 0;
 }
@@ -304,7 +307,11 @@ int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **n
 		if (ValueIsInArray(value, supported_freq, ARRAY_SIZE(supported_freq))) {
 			if (asprintf(&event_name, "gps_data_freq_%d", value) > 0) {
 				afb_api_t api = afb_req_get_api(request);
-				if(afb_api_new_event(api, event_name, &newEvent->event) < 0) return -1;
+				if (afb_api_new_event(api, event_name, &newEvent->event) < 0) {
+					free(event_name);
+					return -1;
+				}
+				free(event_name);
 				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = FREQUENCY;
@@ -325,7 +332,11 @@ int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **n
 		if (ValueIsInArray(value, supported_movement, ARRAY_SIZE(supported_movement))) {
 			if (asprintf(&event_name, "gps_data_movement_%d", value) > 0) {
 				afb_api_t api = afb_req_get_api(request);
-				if(afb_api_new_event(api, event_name, &newEvent->event) < 0) return -1;
+				if(afb_api_new_event(api, event_name, &newEvent->event) < 0) {
+					free(event_name);
+					return -1;
+				}
+				free(event_name);
 				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = MOVEMENT;
@@ -347,7 +358,11 @@ int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **n
 		if (ValueIsInArray(value, supported_speed, ARRAY_SIZE(supported_speed))) {
 			if (asprintf(&event_name, "gps_data_speed_%d", value) > 0) {
 				afb_api_t api = afb_req_get_api(request);
-				if(afb_api_new_event(api, event_name, &newEvent->event) < 0) return -1;
+				if(afb_api_new_event(api, event_name, &newEvent->event) < 0) {
+					free(event_name);
+					return -1;
+				}
+				free(event_name);
 				newEvent->is_protected = is_protected;
 				newEvent->not_used_count = 0;
 				newEvent->condition_type = MAX_SPEED;
@@ -393,7 +408,10 @@ bool EventListFind(json_object *jcondition, event_list_node **found_node) {
 
     //Generate the name of the event we are looking for
 	char* event_name = NULL;
-	if (EventJsonToName(jcondition, &event_name) == -1) return false;
+	if (EventJsonToName(jcondition, &event_name) == -1) {
+		free(event_name);
+		return false;
+	}
 
 	//Browse the event list for an event with this name
 	pthread_mutex_lock(&EventListMutex);
