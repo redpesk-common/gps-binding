@@ -60,7 +60,7 @@
 #define GPSD_CONNECT_MAX_DELAY 60
 
 #define GPSD_POLLING_MAX_RETRIES 60
-#define GPSD_POLLING_DELAY_MS 2000
+#define GPSD_POLLING_DELAY_MS 1000
 
 //Define the max not used count for an event
 #define EVENT_MAX_NOT_USED 5
@@ -384,7 +384,7 @@ int EventListAdd(json_object *jcondition, bool is_protected, event_list_node **n
 	cds_list_add_tail(&newEvent->list_head, &list->list_head);
 	pthread_mutex_unlock(&EventListMutex);
 
-	if (*node != NULL) *node = newEvent;
+	if (node != NULL) *node = newEvent;
 
 	AFB_INFO("Event %s well created.", afb_event_name(newEvent->event));
 	return 0;
@@ -519,6 +519,7 @@ static json_object *JsonDataCompletion(json_object *jdata) {
  * request : Request from the afb client.
  *
  * returns: nothing
+ * Error code 1 : JsonData does not have enough data to be reliable 
  */
 static void GetGpsData(afb_req_t request, unsigned argc, afb_data_t const argv[]) {
 	json_object *JsonData = NULL;
@@ -531,7 +532,7 @@ static void GetGpsData(afb_req_t request, unsigned argc, afb_data_t const argv[]
 		afb_req_reply_json_c_hold(request, 0, JsonData);
 	}
 	else {
-		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "failed, no GNSS fix");
+		afb_req_reply_string(request, AFB_USER_ERRNO(1), "not enough data to be reliable\n");
 	} 
 }
 
@@ -576,6 +577,7 @@ static void Subscribe(afb_req_t request, unsigned argc, afb_data_t const argv[])
 
 		if (afb_req_subscribe(request, event_to_subscribe->event) == 0) {
 			AFB_INFO("Subscribed to event %s.", afb_event_name(event_to_subscribe->event));
+			afb_data_addref(result);
 			afb_req_reply(request, 0, 1, &result);
 		}
 				
@@ -616,7 +618,8 @@ static void Unsubscribe(afb_req_t request, unsigned argc, afb_data_t const argv[
 			if (afb_req_unsubscribe(request, event_to_unsubscribe->event) == 0) {
 				//Unsubscribe successfully, keep the event for another hypothetical client
 
-				afb_req_reply_json_c_hold(request, 0, json_request);
+				afb_data_addref(result);
+				afb_req_reply(request, 0, 1, &result);
 			}
 			else afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "Unsubscription error");
 		}
@@ -865,7 +868,7 @@ static void* GpsdConnectionManagementThread(void *arg) {
 			//Due to the gpsd.socket race condition need to loop until initial event
 			do {
 				gps_read(userdata->gps_data);
-			} while (!gps_waiting(userdata->gps_data, MSECS_TO_USECS(2500)) && tries--);
+			} while (!gps_waiting(userdata->gps_data, MSECS_TO_USECS(1000)) && tries--);
 		#endif
 		AFB_INFO("Connected to GPSd");
 		
