@@ -733,7 +733,6 @@ static void* EventManagementThread(void *arg) {
 							tmp->not_used_count++;
 							if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
 								if (EventListDeleteByNode(&tmp)) {
-									AFB_INFO("Event %s deleted.", afb_event_name(tmp->event));
 									UpdateMaxFreq();
 								}
 							}
@@ -765,9 +764,7 @@ static void* EventManagementThread(void *arg) {
 							//If an unprotected event is not used anymore, delete it
 							tmp->not_used_count++;
 							if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
-								if (EventListDeleteByNode(&tmp)) {
-									AFB_INFO("Event %s deleted.", afb_event_name(tmp->event));
-								}
+								EventListDeleteByNode(&tmp);
 							}
 						}
 					}
@@ -797,9 +794,7 @@ static void* EventManagementThread(void *arg) {
 								//If an unprotected event is not used anymore, delete it
 								tmp->not_used_count++;
 								if (tmp->not_used_count >= EVENT_MAX_NOT_USED) {
-									if (EventListDeleteByNode(&tmp)) {
-										AFB_INFO("Event %s deleted.", afb_event_name(tmp->event));
-									}
+									EventListDeleteByNode(&tmp);
 								}
 							}
 						}
