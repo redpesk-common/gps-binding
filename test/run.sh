@@ -14,9 +14,9 @@ echo "--- Stopping remaining gpsd & gpsfake instances ---"
 stop_gpsd
 
 echo "--- Launching gpsfake instance ---"
-gpsfake -q -S $DIR/bzh.nmea &
+gpsfake -q -S $DIR/lorient.nmea &
 
-TEST_BINDING_PATH=${SCRIPT_DIR}/../build python ${SCRIPT_DIR}/tests.py --tap
+TEST_BINDING_PATH=${SCRIPT_DIR}/../build python ${SCRIPT_DIR}/tests.py -vvv --tap
 
 echo "--- Killing created gpsd & gpsfake instances ---"
 stop_gpsd
