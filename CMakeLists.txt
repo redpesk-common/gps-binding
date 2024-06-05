@@ -52,6 +52,7 @@ add_library(gps-binding SHARED
                         binding/rp-gps-binding.c
                         binding/rp-gps-binding.h
                         binding/json_info.c)
+set_target_properties(gps-binding PROPERTIES PREFIX "")
 target_link_libraries(gps-binding ${deps_LDFLAGS})
 
 # This version script is a linker script which exports all symbols named "afbBinding*" and makes all the other symbols local only
@@ -62,4 +63,4 @@ endif(vscript)
 
 # Install
 install(TARGETS gps-binding DESTINATION ${APP_DIR}/lib)
-install(FILES rpconfig/manifest.yml DESTINATION ${APP_DIR}/.rpconfig)
+install(FILES manifest.yml DESTINATION ${APP_DIR}/.rpconfig)
