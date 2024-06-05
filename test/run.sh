@@ -16,7 +16,10 @@ stop_gpsd
 echo "--- Launching gpsfake instance ---"
 gpsfake -q -S $DIR/lorient.nmea &
 
-TEST_BINDING_PATH=${SCRIPT_DIR}/../build python ${SCRIPT_DIR}/tests.py -vvv --tap
+#gpsfake need few seconds before having enough data to be reliable
+sleep 3
+
+LD_LIBRARY_PATH=${SCRIPT_DIR}/../build python ${SCRIPT_DIR}/tests.py -vvv --tap
 
 echo "--- Killing created gpsd & gpsfake instances ---"
 stop_gpsd

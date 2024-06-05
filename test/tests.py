@@ -29,46 +29,43 @@ def setUpModule():
 class TestVerbGps(AFBTestCase):
 
     "Test gps-data verb"
-    def _test_data_success(self):
+    def test_data_success(self):
              
-        #gpsfake need few seconds before having enough data to be reliable
-        time.sleep(3.0)
         r = libafb.callsync(self.binder, "gps", "gps-data", {})
         assert r.status == 0 # 0 = binding worked properly
 
         r = libafb.callsync(self.binder, "gps", "gps-data", {})
-        d = r.args[0]
+        dicto = r.args[0]
         
-        self.assertIn('visible satellites', d)
-        self.assertIn('used satellites', d)
-        self.assertIn('mode', d)
-        self.assertIn('latitude', d)
-        self.assertIn('longitude', d)
-        self.assertIn('speed', d)
-        self.assertIn('altitude', d)
-        self.assertIn('altitude error', d)
-        self.assertIn('climb', d)
-        self.assertIn('climb error', d)
-        self.assertIn('heading (true north)', d)
-        self.assertIn('timestamp', d)
-        self.assertIn('timestamp error', d)
+        assert 'visible satellites' in dicto
+        assert 'used satellites' in dicto
+        assert 'mode' in dicto
+        assert 'latitude' in dicto
+        assert 'longitude' in dicto
+        assert 'speed' in dicto
+        assert 'altitude'in dicto
+        assert 'altitude error' in dicto
+        assert 'climb' in dicto
+        assert 'heading (true north)' in dicto
+        assert 'timestamp' in dicto
+        assert 'timestamp error' in dicto
 
-        self.assertTrue(type(d['visible satellites']) == int)
-        self.assertTrue(type(d['used satellites']) == int)
-        self.assertTrue(type(d['mode']) == int)   
-        self.assertTrue(type(d['latitude']) == float)
-        self.assertTrue(type(d['longitude']) == float)
-        self.assertTrue(type(d['speed']) == float)
-        self.assertTrue(type(d['altitude']) == float)
-        self.assertTrue(type(d['altitude error']) == float)
-        self.assertTrue(type(d['climb']) == float)
-        self.assertTrue(type(d['climb error']) == float)
-        self.assertTrue(type(d['heading (true north)']) == float)
-        self.assertTrue(type(d['timestamp']) == float)
-        self.assertTrue(type(d['timestamp error']) == float)
+        assert type(dicto['visible satellites']) == int
+        assert type(dicto['used satellites']) == int
+        assert type(dicto['mode']) == int
+        assert type(dicto['latitude']) == float
+        assert type(dicto['longitude']) == float
+        assert type(dicto['speed']) == float
+        assert type(dicto['altitude']) == float
+        assert type(dicto['altitude error']) == float
+        assert type(dicto['climb']) == float
+        assert type(dicto['climb error']) == float
+        assert type(dicto['heading (true north)']) == float
+        assert type(dicto['timestamp']) == float
+        assert type(dicto['timestamp error']) == float
 
     
-    def _test_data_fail(self):
+    def test_data_fail(self):
 
         with self.assertRaises(RuntimeError):
             r = libafb.callsync(self.binder, "gps", "noData", {"data" : "gps_data", "condition" : "frequency", "value" : 1})
@@ -78,15 +75,15 @@ class TestVerbGps(AFBTestCase):
         
 
     "Test subscribe verb"
-    def _test_subscribe_unsubscribe(self):
+    def test_subscribe_unsubscribe(self):
 
         freqList = [1, 10, 20, 50, 100]
 
-        for f in range(len(freqList)):
-            r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : freqList[f]})
+        for freq in freqList:
+            r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : freq})
             assert r.status == 0 #0 = binding worked properly
             
-            r = libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "frequency", "value" : freqList[f]})
+            r = libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "frequency", "value" : freq})
             assert r.status == 0      
 
         movList = [1, 10, 100, 300, 500, 1000]
@@ -114,7 +111,7 @@ class TestVerbGps(AFBTestCase):
         r = libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 1})
 
 
-    def _test_subscribe_fail(self):
+    def test_subscribe_fail(self):
 
         with self.assertRaises(RuntimeError):
             r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 0.5})
@@ -126,10 +123,16 @@ class TestVerbGps(AFBTestCase):
             r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "max_speed", "value" : 0.5})
 
         with self.assertRaises(RuntimeError):
+            r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : "hello"})
+
+        with self.assertRaises(RuntimeError):
             r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "noCond", "value" : 1})
 
+        with self.assertRaises(RuntimeError):
+            r = libafb.callsync(self.binder, "gps", "subscribe", {"dataaa" : "gps_data", "condition" : "frequency", "value" : 1})
 
-    def _test_unsubscribe_fail(self):
+
+    def test_unsubscribe_fail(self):
 
         #testing double unsubscription 
         libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 1})
@@ -161,7 +164,7 @@ class TestVerbGps(AFBTestCase):
 
 
     "Test info verb"
-    def _test_info_success(self):
+    def test_info_success(self):
 
         r = libafb.callsync(self.binder, "gps", "info")
         assert r.status == 0
@@ -171,19 +174,23 @@ class TestEventGps(AFBTestCase):
 
     def test_event_success(self):
         count = 0
-        def evt_freq(*args):
+        def evt_freq(binder, evt_name, userdata, data):
             nonlocal count
             print(count)
             count += 1
 
         e = libafb.evthandler(self.binder, {"uid": "gps", "pattern": "gps/*", "callback": evt_freq})
-        r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 1})
-        time.sleep(10.0)
-        assert 9 <= count <= 11
-        libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 1})
+        r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 10})
+        time.sleep(5.0)
+        assert 40 <= count <= 55
+        libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 10})
         libafb.evtdelete(e)
 
-
+        ###
+        #   Calculate the great circle distance in kilometers 
+        #   between two points on the earth (specified in decimal degrees)
+        #   BEWARE : in this calcul the Earth is considered a perfect sphere 
+        ###
         def haversine(lon1, lat1, lon2, lat2):
             lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
             dlon = lon2 - lon1
@@ -191,22 +198,22 @@ class TestEventGps(AFBTestCase):
             a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
             return 2 * 6371 * asin(sqrt(a))
 
-        d = 0
+        distance = 0
         lo1 = 0
         lo2 = 0
         la1 = 0
         la2 = 0
-        def evt_move(*args):
-            nonlocal d
+        def evt_move(binder, evt_name, userdata, data):
+            nonlocal distance
             nonlocal lo1
             nonlocal lo2
             nonlocal la1
             nonlocal la2
-            m = args[3]
-            lo2 = m["longitude"]
-            la2 = m["latitude"]
-            d = haversine(lo1, la1, lo2, la1)
-
+            dicto = data
+            lo2 = dicto["longitude"]
+            la2 = dicto["latitude"]
+            distance = haversine(lo1, la1, lo2, la1)
+        
         e = libafb.evthandler(self.binder, {"uid": "gps", "pattern": "gps/*", "callback": evt_move})
         # with the speed defined in the simulation you'll have one callback every 3 seconds
         r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "movement", "value" : 100})
@@ -217,16 +224,18 @@ class TestEventGps(AFBTestCase):
 
 
         target = 20
-        s = 0
-        def evt_speed(*args):
-            nonlocal s
-            m = args[3]
-            s = m["speed"]
+        speed = 0
+        def evt_speed(binder, evt_name, userdata, data):
+            nonlocal speed
+            dicto = data
+            speed = dicto["speed"]
+            print(speed)
 
         e = libafb.evthandler(self.binder, {"uid": "gps", "pattern": "gps/*", "callback": evt_speed})
         r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "max_speed", "value" : target})
         time.sleep(5.0)
-        assert s >= target * 0.90
+        print(speed)
+        assert speed >= target * 0.90
         libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "max_speed", "value" : target})
 
 
