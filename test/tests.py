@@ -176,7 +176,6 @@ class TestEventGps(AFBTestCase):
         count = 0
         def evt_freq(binder, evt_name, userdata, data):
             nonlocal count
-            print(count)
             count += 1
 
         e = libafb.evthandler(self.binder, {"uid": "gps", "pattern": "gps/*", "callback": evt_freq})
@@ -189,7 +188,7 @@ class TestEventGps(AFBTestCase):
         ###
         #   Calculate the great circle distance in kilometers 
         #   between two points on the earth (specified in decimal degrees)
-        #   BEWARE : in this calcul the Earth is considered a perfect sphere 
+        #   BEWARE : in this computation the Earth is considered a perfect sphere  
         ###
         def haversine(lon1, lat1, lon2, lat2):
             lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
@@ -207,11 +206,10 @@ class TestEventGps(AFBTestCase):
             nonlocal distance
             nonlocal lo1
             nonlocal lo2
-            nonlocal la1
+            nonlocal la1 
             nonlocal la2
-            dicto = data
-            lo2 = dicto["longitude"]
-            la2 = dicto["latitude"]
+            lo2 = data["longitude"]
+            la2 = data["latitude"]
             distance = haversine(lo1, la1, lo2, la1)
         
         e = libafb.evthandler(self.binder, {"uid": "gps", "pattern": "gps/*", "callback": evt_move})
@@ -229,12 +227,10 @@ class TestEventGps(AFBTestCase):
             nonlocal speed
             dicto = data
             speed = dicto["speed"]
-            print(speed)
 
         e = libafb.evthandler(self.binder, {"uid": "gps", "pattern": "gps/*", "callback": evt_speed})
         r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "max_speed", "value" : target})
         time.sleep(5.0)
-        print(speed)
         assert speed >= target * 0.90
         libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "max_speed", "value" : target})
 
