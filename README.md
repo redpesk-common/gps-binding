@@ -1,3 +1,5 @@
+[![Pipeline Status](https://git.ovh.iot/redpesk/redpesk-common/gps-binding/badges/@iheb/cig/pipeline.svg)](https://git.ovh.iot/redpesk/redpesk-common/gps-binding/-/pipelines)
+
 # GPS API for redpesk
 
 ## Pre-Requisites
@@ -142,17 +144,58 @@ or
 xgps
 ```
 
-## Use the tests suite of the binding
+## Automatically test the binding with the python test
+
+You can use the provided Python test to automatically test the binding. Follow these steps:
 
 ```bash
 mkdir build
 cd build
-cmake -DBUILD_TEST_WGT=TRUE ..
+cmake ..
 make
-make widget
-./package-test/var/run-test.sh
+LD_LIBRARY_PATH=. python ../test/tests.py -vvv
 ```
 
-If you want to launch tests manually using the afm-test suite, you should run a working gpsd instance before running them.
+Ensure that a working gpsd instance is running before executing the tests.
+
+
+If you want to launch tests manually using the afb-binder and afb-client, you should also run a working gpsd instance before running them.
+
+```bash
+$afb-binder -b ./gps-binding.so -vvv
+```
+
+```bash
+$afb-client -H localhost:1234/api
+gps gps-data
+ON-REPLY 1:gps/gps-data: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "visible satellites":0,
+    "used satellites":12,
+    "mode":3,
+    "latitude":47.707083333,
+    "longitude":-3.3730500000000001,
+    "speed":30.507000000000001,
+    "altitude":0.0,
+    "altitude error":23.0,
+    "climb":0.0,
+    "climb error":460.0,
+    "heading (true north)":237.69999999999999,
+    "timestamp":1717427446.9119999,
+    "timestamp error":0.0050000000000000001
+  }
+}
+.
+.
+.
+.
+.
+```
 
 
