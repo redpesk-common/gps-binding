@@ -19,17 +19,17 @@ import unittest
 from math import radians, sin, cos, asin, sqrt
 
 
-bindings = {"gps": f"libgps-binding.so"}
+bindings = {"gps": f"gps-binding.so"}
 
 def setUpModule():
     configure_afb_binding_tests(bindings=bindings)
     
-        
 
 class TestVerbGps(AFBTestCase):
 
     "Test gps-data verb"
     def test_data_success(self):
+        time.sleep(1.0) # add a sleep time to wait for the gpsd to start
              
         r = libafb.callsync(self.binder, "gps", "gps-data", {})
         assert r.status == 0 # 0 = binding worked properly
@@ -66,6 +66,7 @@ class TestVerbGps(AFBTestCase):
 
     
     def test_data_fail(self):
+        time.sleep(1.0) # add a sleep time to wait for the gpsd to start
 
         with self.assertRaises(RuntimeError):
             r = libafb.callsync(self.binder, "gps", "noData", {"data" : "gps_data", "condition" : "frequency", "value" : 1})
@@ -76,6 +77,7 @@ class TestVerbGps(AFBTestCase):
 
     "Test subscribe verb"
     def test_subscribe_unsubscribe(self):
+        time.sleep(1.0) # add a sleep time to wait for the gpsd to start
 
         freqList = [1, 10, 20, 50, 100]
 
@@ -112,6 +114,7 @@ class TestVerbGps(AFBTestCase):
 
 
     def test_subscribe_fail(self):
+        time.sleep(1.0) # add a sleep time to wait for the gpsd to start
 
         with self.assertRaises(RuntimeError):
             r = libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 0.5})
@@ -133,6 +136,7 @@ class TestVerbGps(AFBTestCase):
 
 
     def test_unsubscribe_fail(self):
+        time.sleep(1.0) # add a sleep time to wait for the gpsd to start
 
         #testing double unsubscription 
         libafb.callsync(self.binder, "gps", "subscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 1})
@@ -165,6 +169,7 @@ class TestVerbGps(AFBTestCase):
 
     "Test info verb"
     def test_info_success(self):
+        time.sleep(1.0) # add a sleep time to wait for the gpsd to start
 
         r = libafb.callsync(self.binder, "gps", "info")
         assert r.status == 0
@@ -173,6 +178,7 @@ class TestVerbGps(AFBTestCase):
 class TestEventGps(AFBTestCase):
 
     def test_event_success(self):
+        time.sleep(1.0) # add a sleep time to wait for the gpsd to start
         count = 0
         def evt_freq(binder, evt_name, userdata, data):
             nonlocal count
@@ -183,7 +189,7 @@ class TestEventGps(AFBTestCase):
         time.sleep(5.0)
         assert 40 <= count <= 55
         libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "frequency", "value" : 10})
-        libafb.evtdelete(e)
+        libafb.evtdelete(self.binder, "gps/*")
 
         ###
         #   Calculate the great circle distance in kilometers 
@@ -218,7 +224,7 @@ class TestEventGps(AFBTestCase):
         time.sleep(10.0)
         if(la1 != 0 & lo1 != 0): assert 90 <= d <= 110
         libafb.callsync(self.binder, "gps", "unsubscribe", {"data" : "gps_data", "condition" : "movement", "value" : 100})
-        libafb.evtdelete(e)
+        libafb.evtdelete(self.binder, "gps/*")
 
 
         target = 20
