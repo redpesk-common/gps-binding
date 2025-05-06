@@ -1,3 +1,4 @@
+// clang-format off
 const char *info_verbS =
 "{"
     "\"metadata\": {"
@@ -63,3 +64,4 @@ const char *info_verbS =
     "]"
 "}"
 ;
+// clang-format on
