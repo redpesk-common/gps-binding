@@ -416,7 +416,7 @@ bool EventListFind(json_object *jcondition, event_list_node **found_node) {
 	cds_list_for_each_entry(iterator, &list->list_head, list_head) {
 		if (strcmp (event_name, afb_event_name(iterator->event))) continue;
 
-		if (*found_node != NULL) *found_node = iterator;
+		if (found_node != NULL) *found_node = iterator;
 		found = true;
 		break;
 	}
@@ -447,6 +447,8 @@ bool EventListDeleteByNode(event_list_node **node) {
 		deleted = true;
 		
 		free(iterator);
+
+                *node = NULL;
 		break;
 	}
 	pthread_mutex_unlock(&EventListMutex);
@@ -744,7 +746,8 @@ static void* EventManagementThread(void *arg) {
 						if (tmp->not_used_count) tmp->not_used_count = 0;
 					}
 					//Update time from last check even if not pushed
-					tmp->last_value.freq_last_send = now;
+					if (tmp)
+                                            tmp->last_value.freq_last_send = now;
 				}
 
 			}
