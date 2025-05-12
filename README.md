@@ -1,4 +1,4 @@
-[![Pipeline Status](https://git.ovh.iot/redpesk/redpesk-common/gps-binding/badges/@iheb/cig/pipeline.svg)](https://git.ovh.iot/redpesk/redpesk-common/gps-binding/-/pipelines)
+[![Pipeline Status](https://git.ovh.iot/redpesk/redpesk-common/gps-binding/badges/master/pipeline.svg)](https://git.ovh.iot/redpesk/redpesk-common/gps-binding/-/pipelines)
 
 # GPS API for redpesk
 
