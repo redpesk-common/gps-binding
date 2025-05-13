@@ -15,7 +15,7 @@ targets:
   - target: main
     content:
       type: application/vnd.agl.service
-      src: lib/libgps-binding.so
+      src: lib/gps-binding.so
     provided-api:
       - name: gps
         value: ws

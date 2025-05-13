@@ -64,3 +64,9 @@ endif(vscript)
 # Install
 install(TARGETS gps-binding DESTINATION ${APP_DIR}/lib)
 install(FILES manifest.yml DESTINATION ${APP_DIR}/.rpconfig)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/redtest/run-redtest
+	DESTINATION /usr/libexec/redtest/${PROJECT_NAME}/)
+install(FILES ${CMAKE_SOURCE_DIR}/test/tests.py
+    DESTINATION /usr/libexec/redtest/${PROJECT_NAME}/)
+install(FILES ${CMAKE_SOURCE_DIR}/test/lorient.nmea
+    DESTINATION /usr/libexec/redtest/${PROJECT_NAME}/)
