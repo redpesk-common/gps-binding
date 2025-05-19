@@ -6,7 +6,8 @@ Summary: Gps service set to be used in the redpesk
 URL: https://git.ovh.iot/redpesk/redpesk-common/gps-binding
 Source: %{name}-%{version}.tar.gz
 
-BuildRequires:  afm-rpm-macros
+%global _afmappdir %{_prefix}/redpesk
+
 BuildRequires:  cmake
 BuildRequires:  gcc-c++
 BuildRequires:  afb-cmake-modules
