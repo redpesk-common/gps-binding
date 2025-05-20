@@ -19,3 +19,8 @@ targets:
     provided-api:
       - name: gps
         value: ws
+    required-binding:
+      - name: lib/gps-binding.so
+        value: local
+
+    
