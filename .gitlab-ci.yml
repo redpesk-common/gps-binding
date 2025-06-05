@@ -1,6 +1,17 @@
+# Specify that this pipeline is on merge request only
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+
+include:
+   - 'https://raw.githubusercontent.com/redpesk-devtools/gitlab-ci-factory-templates/refs/heads/master/.rp-cli-template-ci.yml'
+
 stages:
   - lint
-  - test
+  - test-py
+  - build_factory
+  - redtest_factory
+
 
 default:
   tags:
@@ -13,8 +24,8 @@ lint:
     - bash -x ci/lint.sh
   allow_failure: true
 
-test:
-  stage: test
+test-py:
+  stage: test-py
   needs: []
   script:
     - bash -x ci/test_and_coverage.sh
@@ -29,3 +40,14 @@ test:
         path: coverage.xml
   # extract coverage from lcov --list output
   coverage: '/Total:\|(\d+\.?\d+\%)/'
+
+build_factory:
+  stage: build_factory
+  extends: .rp-cli-build
+
+redtest_factory:
+  stage: redtest_factory
+  needs:
+    - build_factory
+  extends: .rp-cli-test
+
