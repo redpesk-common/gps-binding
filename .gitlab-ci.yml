@@ -1,8 +1,4 @@
 # Specify that this pipeline is on merge request only
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-
 include:
    - 'https://raw.githubusercontent.com/redpesk-devtools/gitlab-ci-factory-templates/refs/heads/master/.rp-cli-template-ci.yml'
 
