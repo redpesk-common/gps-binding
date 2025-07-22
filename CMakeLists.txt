@@ -47,6 +47,11 @@ pkg_check_modules(deps REQUIRED
     afb-helpers4
 )
 
+# Specify the directory for .gcno and .gcda
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-dir=/usr/libexec/redtest/${PROJECT_NAME}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-dir=/usr/libexec/redtest/${PROJECT_NAME}")
+
+
 # Build
 add_library(gps-binding SHARED
                         binding/rp-gps-binding.c

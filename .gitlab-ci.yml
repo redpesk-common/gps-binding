@@ -1,49 +1,33 @@
-# Specify that this pipeline is on merge request only
+# This file is part of the redpesk project.
 include:
-   - 'https://raw.githubusercontent.com/redpesk-devtools/gitlab-ci-factory-templates/refs/heads/master/.rp-cli-template-ci.yml'
+  - 'https://raw.githubusercontent.com/redpesk-devtools/gitlab-ci-factory-templates/refs/heads/master/rp-cli-template-ci.yml'
+
+# variables:
+  # RP_VERBOSE: "true"  # just uncomment this line to enable debugging mode
 
 stages:
   - lint
-  - test-py
   - build_factory
   - redtest_factory
 
-
 default:
   tags:
-    - redpesk-batz
+    - redpesk-binding-ci
 
 lint:
   stage: lint
-  needs: []
   script:
     - bash -x ci/lint.sh
   allow_failure: true
 
-test-py:
-  stage: test-py
-  needs: []
-  script:
-    - bash -x ci/test_and_coverage.sh
-  artifacts:
-    paths:
-      - html/
-      - coverage.xml
-    expose_as: 'Coverage report'
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-  # extract coverage from lcov --list output
-  coverage: '/Total:\|(\d+\.?\d+\%)/'
-
 build_factory:
   stage: build_factory
-  extends: .rp-cli-build
+  extends:
+    - .rp-cli-build
 
 redtest_factory:
   stage: redtest_factory
   needs:
     - build_factory
-  extends: .rp-cli-test
-
+  extends:
+    - .rp-cli-start-test
