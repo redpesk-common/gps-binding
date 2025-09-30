@@ -71,3 +71,8 @@ PYTHONPATH=./lcov_cobertura-2.1.1/ python3 -m lcov_cobertura app_filtered.info -
 
 
 echo "--- Coverage report generated at ${LOG_DIR}/ ---"
+
+##########################
+# report status
+##########################
+test -f /var/log/redtest/${PACKAGE_NAME}/tests.tap && grep -viq '^not ok' /var/log/redtest/${PACKAGE_NAME}/tests.tap
