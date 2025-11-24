@@ -52,7 +52,8 @@ add_library(gps-binding SHARED
                         binding/json_info.c)
 target_include_directories(gps-binding PRIVATE ${deps_INCLUDE_DIRS})
 set_target_properties(gps-binding PROPERTIES PREFIX "")
-target_link_options(gps-binding PRIVATE ${deps_LDFLAGS} -lm)
+target_link_options(gps-binding PRIVATE ${deps_LDFLAGS})
+target_link_libraries(gps-binding ${deps_LIBRARIES} m)
 
 # This version script is a linker script which exports all symbols named "afbBinding*" and makes all the other symbols local only
 pkg_get_variable(vscript afb-binding version_script)
