@@ -22,7 +22,7 @@
 # $RP_END_LICENSE$
 ###########################################################################
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 
 project(gps-binding
     VERSION 2.0.0
@@ -41,9 +41,7 @@ pkg_check_modules(deps REQUIRED
     json-c
     afb-binding>=4.1.0
     libgps
-    libsystemd>=222
     liburcu
-    afb-binding
     afb-helpers4
 )
 
@@ -52,6 +50,7 @@ add_library(gps-binding SHARED
                         binding/rp-gps-binding.c
                         binding/rp-gps-binding.h
                         binding/json_info.c)
+target_include_directories(gps-binding PRIVATE ${deps_INCLUDE_DIRS})
 set_target_properties(gps-binding PROPERTIES PREFIX "")
 target_link_libraries(gps-binding ${deps_LDFLAGS})
 
