@@ -1037,7 +1037,7 @@ static const afb_verb_t binding_verbs[] = {
  */
 const struct afb_binding_v4 afbBindingV4 = {
     .api = "gps",
-    .specification = "GNSS/GPS API",
+    .info = "GNSS/GPS API",
     .verbs = binding_verbs,
     .mainctl = binding_ctl,
 };
