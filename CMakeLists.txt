@@ -25,7 +25,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 
 project(gps-binding
-    VERSION 2.0.0
+    VERSION 2.0.1
     DESCRIPTION "Binding for handling GPS data from gpsd"
     HOMEPAGE_URL "https://github.com/redpesk-common/gps-binding"
     LANGUAGES C

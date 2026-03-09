@@ -4,7 +4,7 @@ const char *info_verbS =
     "\"metadata\": {"
         "\"uid\": \"gps\","
         "\"info\": \"GPS Binding\","
-        "\"version\": \"1.0\""
+        "\"version\": \"2.0.1\""
     "},"
     "\"groups\": ["
         "{"
