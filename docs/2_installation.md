@@ -1,91 +1,22 @@
-# GPS Binding installation guide
+# Installation
 
-## redpesk target
+## From package
 
-Gps binding is available in standard redpesk repositories.
-
-```bash
-dnf install gps-binding
-```
-
-## Native
-
-### From repository
-
-Firstly, ["Verify Your Build Host"]({% chapter_link host-configuration-doc.setup-your-build-host %}). Indeed, your host needs to have a supported distribution.
-Then, you can use the following command-line to get the `gps-binding` binding and all its dependencies. Please use the right paragraph, according to you distribution.
-
-#### Ubuntu
-
-Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
-
-[Installation RedpPesk Factory]({% chapter_link rp-cli-doc.installation %})
-
-Then, update the list of packages and simply install the `gps-binding` package.
-
-```bash
-# Update the list of available packages
-$ sudo apt update
-# Installation of gps-binding
-$ sudo apt-get install gps-binding
-```
-
-#### Fedora
-
-Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
-
-[Installation RedpPesk Factory]({% chapter_link rp-cli-doc.installation %})
-
-Then, simply install the `gps-binding` package.
+You can run the same command on a target runing a redpesk OS or in the [SDK container]({% chapter_link sdk-container-doc.overview %}) (development mode).
 
 ```bash
 dnf install gps-binding
 ```
 
-#### OpenSUSE Leap
+## From sources
 
-Firstly, add the redpesk "sdk" repository in the list of your packages repositories.
-
-[Installation RedpPesk Factory]({% chapter_link rp-cli-doc.installation %})
-
-Then, simply install the `gps-binding` package.
+When developing inside the SDK container, to install the build dependencies, run the following command:
 
 ```bash
-sudo zypper in gps-binding
+dnf builddep gps-binding
 ```
 
-### From sources
-
-We advise you to use the [local builder]({% chapter_link local-builder-doc.installation %}) for building the binding sources. The local builder comes with everything setup to build redpesk projects.
-
-#### Dependencies
-
-- gcc
-- make
-- cmake
-- afb-cmake-modules
-- json-c
-- afb-binding
-- libmicrohttpd
-- afb-libhelpers
-- gpsd
-- gpsd-devel
-- gpsd-clients
-- Userspace RCU library
-
-Fedora/OpenSUSE/redpesk:
-
-```bash
-sudo dnf install gcc make cmake afb-cmake-modules json-c-devel afb-binding-devel libmicrohttpd afb-libhelpers-devel gpsd gpsd-devel gpsd-clients gpsd-libs userspace-rcu-devel
-```
-
-Ubuntu:
-
-```bash
-sudo apt install gcc make cmake afb-cmake-modules-bin libsystemd-dev libjson-c-dev afb-binding-dev libmicrohttpd12 afb-libhelpers-dev gpsd libgps-dev gpsd-clients liburcu-dev
-```
-
-#### Build & Install
+Then clone and build from sources.
 
 ```bash
 git clone https://github.com/redpesk-common/gps-binding
@@ -94,5 +25,6 @@ mkdir build
 cd build
 cmake ..
 make
-make install
 ```
+
+> Note: To rebuild all (including application framework) from sources, please refer to this [chapter]({% chapter_link host-build-doc.build-framework-on-your-computer %}).
